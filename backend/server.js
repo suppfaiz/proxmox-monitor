@@ -362,7 +362,19 @@ app.get('/api/storage', async (req, res) => {
 
   try {
     const response = await proxmoxRequest('GET', '/cluster/resources?type=storage');
-    res.json(response.data);
+    const storages = response.data;
+    
+    const formattedStorages = storages.map(st => ({
+      storage: st.storage,
+      type: st.plugintype || 'unknown',
+      content: st.content || '-',
+      size: st.maxdisk || 0,
+      used: st.disk || 0,
+      active: st.active || 0,
+      shared: st.shared || 0
+    }));
+
+    res.json(formattedStorages);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch Proxmox Storage status', details: error.message });
   }
