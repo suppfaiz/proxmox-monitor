@@ -328,10 +328,9 @@ app.get('/api/resources', async (req, res) => {
   if (config.demoMode) {
     return res.json(demoVms);
   }
-
   try {
-    const resourcesResponse = await proxmoxRequest('GET', '/cluster/resources?type=vm');
-    const resources = resourcesResponse.data;
+    const resourcesResponse = await proxmoxRequest('GET', '/cluster/resources');
+    const resources = resourcesResponse.data.filter(r => r.type === 'qemu' || r.type === 'lxc');
 
     const formattedResources = resources.map(res => ({
       vmid: res.vmid,
