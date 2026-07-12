@@ -249,6 +249,7 @@
                         <div class="log-tabs-wrapper" style="display: flex; gap: 14px;">
                             <span class="log-tab active" data-tab="tasks" style="cursor: pointer; font-size: 13px; font-weight: 700; color: var(--text-primary); transition: var(--transition-smooth);">Proxmox Tasks</span>
                             <span class="log-tab" data-tab="system" style="cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-secondary); transition: var(--transition-smooth);">System Logs</span>
+                            <span class="log-tab" data-tab="sla" style="cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-secondary); transition: var(--transition-smooth);">SLA Alerts</span>
                         </div>
                         <button class="btn-clear-logs" id="btn-clear-logs" title="Bersihkan log"><i class="fa-solid fa-trash-can"></i></button>
                     </div>
@@ -261,6 +262,11 @@
                     <!-- Console/System Events content -->
                     <div class="card-body-logs tab-content" id="console-logs" style="display: none;">
                         <!-- User actions logs -->
+                    </div>
+                    
+                    <!-- SLA Alerts content -->
+                    <div class="card-body-logs tab-content" id="sla-logs" style="display: none;">
+                        <!-- SLA Alerts history generated dynamically -->
                     </div>
                 </div>
 
@@ -280,6 +286,7 @@
                                     <th>Status</th>
                                     <th>CPU Usage</th>
                                     <th>RAM Usage</th>
+                                    <th>Network (RX / TX)</th>
                                     <th>Uptime</th>
                                     <th class="text-right">Aksi</th>
                                 </tr>
@@ -358,6 +365,7 @@
                                     <th>Status</th>
                                     <th>CPU Usage</th>
                                     <th>RAM Usage</th>
+                                    <th>Network (RX / TX)</th>
                                     <th>Uptime</th>
                                     <th class="text-right">Aksi</th>
                                 </tr>

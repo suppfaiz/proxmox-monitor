@@ -17,6 +17,13 @@ let proxmoxWebUrl = '';
 let demoModeActive = true;
 let vncIntervalId = null;
 
+// SLA Alerts Tracking States
+let previousVmStatuses = {};
+let slaAlerts = [
+    { timestamp: new Date(Date.now() - 3600 * 1000 * 2).toLocaleTimeString(), vmid: 103, name: 'mail-mx-01', type: 'stopped', message: 'SLA BREACH: VM mail-mx-01 (103) is Offline!' },
+    { timestamp: new Date(Date.now() - 3600 * 1000).toLocaleTimeString(), vmid: 201, name: 'app-engine-03', type: 'running', message: 'SLA RESTORED: LXC app-engine-03 (201) is Online!' }
+];
+
 // Auth credentials token
 let authToken = localStorage.getItem('pve_dashboard_token') || '';
 
@@ -409,7 +416,12 @@ function initLogTabs() {
             const target = tab.getAttribute('data-tab');
             const contents = document.querySelectorAll('.events-log-card .tab-content');
             contents.forEach(content => {
-                if (content.getAttribute('id') === `${target === 'tasks' ? 'proxmox-tasks-logs' : 'console-logs'}`) {
+                let show = false;
+                if (target === 'tasks' && content.getAttribute('id') === 'proxmox-tasks-logs') show = true;
+                else if (target === 'system' && content.getAttribute('id') === 'console-logs') show = true;
+                else if (target === 'sla' && content.getAttribute('id') === 'sla-logs') show = true;
+                
+                if (show) {
                     content.style.display = 'flex';
                 } else {
                     content.style.display = 'none';
@@ -569,6 +581,9 @@ async function fetchResources() {
         const running = vms.filter(v => v.status === 'running').length;
         elMiniVmsCount.textContent = `${running} / ${vms.length} Active`;
 
+        // Track VM/LXC offline/SLA events
+        trackSlaStatus(vms);
+
         // 1. Render main VMs view table
         renderVmTable(vms);
         
@@ -580,6 +595,65 @@ async function fetchResources() {
     } catch (error) {
         addConsoleLog(`Gagal mengambil VM/Containers: ${error.message}`, 'error');
     }
+}
+
+function trackSlaStatus(vms) {
+    let changed = false;
+    vms.forEach(vm => {
+        const prevStatus = previousVmStatuses[vm.vmid];
+        if (prevStatus && prevStatus !== vm.status) {
+            let message = '';
+            if (vm.status === 'stopped' && prevStatus === 'running') {
+                message = `SLA BREACH: ${vm.type.toUpperCase()} ${vm.name} (${vm.vmid}) is Offline!`;
+                slaAlerts.unshift({
+                    timestamp: new Date().toLocaleTimeString(),
+                    vmid: vm.vmid,
+                    name: vm.name,
+                    type: 'stopped',
+                    message
+                });
+                changed = true;
+            } else if (vm.status === 'running' && prevStatus === 'stopped') {
+                message = `SLA RESTORED: ${vm.type.toUpperCase()} ${vm.name} (${vm.vmid}) is Online!`;
+                slaAlerts.unshift({
+                    timestamp: new Date().toLocaleTimeString(),
+                    vmid: vm.vmid,
+                    name: vm.name,
+                    type: 'running',
+                    message
+                });
+                changed = true;
+            }
+        }
+        previousVmStatuses[vm.vmid] = vm.status;
+    });
+
+    const elSlaLogs = document.getElementById('sla-logs');
+    if (changed || !elSlaLogs || elSlaLogs.children.length === 0) {
+        if (slaAlerts.length > 50) slaAlerts.pop();
+        renderSlaAlerts();
+    }
+}
+
+function renderSlaAlerts() {
+    const el = document.getElementById('sla-logs');
+    if (!el) return;
+    el.innerHTML = '';
+    
+    if (slaAlerts.length === 0) {
+        el.innerHTML = `<div class="text-muted text-center" style="font-size: 11px; padding: 20px;">Belum ada riwayat alarm SLA.</div>`;
+        return;
+    }
+    
+    slaAlerts.forEach(alert => {
+        const isBreach = alert.type === 'stopped';
+        el.innerHTML += `
+            <div class="log-item" style="border-left: 2px solid ${isBreach ? '#ef4444' : '#10b981'}; padding: 8px; margin-bottom: 6px; background: rgba(255,255,255,0.02); border-radius: 4px; display: flex; gap: 8px; font-size: 11px;">
+                <span class="log-time" style="color: var(--text-secondary); font-family: monospace;">[${alert.timestamp}]</span>
+                <span class="log-message" style="color: ${isBreach ? '#fca5a5' : '#a7f3d0'}; font-weight: 500;">${alert.message}</span>
+            </div>
+        `;
+    });
 }
 
 function renderVmTable(vms) {
@@ -643,6 +717,14 @@ function renderVmTable(vms) {
                 ${isRunning && vm.maxmem > 0 ? `
                     <div class="table-progress-text">${ramPercent}% (${formatBytes(vm.mem, 1)})</div>
                     <div class="progress-bar-container"><div class="progress-bar-fill ${ramBarClass}" style="width: ${ramPercent}%"></div></div>
+                ` : '-'}
+            </td>
+            <td>
+                ${isRunning ? `
+                    <div style="font-size: 11px; line-height: 1.4;">
+                        <span style="color: var(--color-teal);"><i class="fa-solid fa-arrow-down" style="font-size: 9px;"></i> ${formatBytes(vm.netin || 0, 1)}</span><br>
+                        <span style="color: var(--color-purple);"><i class="fa-solid fa-arrow-up" style="font-size: 9px;"></i> ${formatBytes(vm.netout || 0, 1)}</span>
+                    </div>
                 ` : '-'}
             </td>
             <td>${formatUptime(vm.uptime)}</td>
@@ -712,6 +794,14 @@ function renderDashboardVmTable(vms) {
                 ${isRunning && vm.maxmem > 0 ? `
                     <div class="table-progress-text">${ramPercent}% (${formatBytes(vm.mem, 1)})</div>
                     <div class="progress-bar-container"><div class="progress-bar-fill ${ramBarClass}" style="width: ${ramPercent}%"></div></div>
+                ` : '-'}
+            </td>
+            <td>
+                ${isRunning ? `
+                    <div style="font-size: 11px; line-height: 1.4;">
+                        <span style="color: var(--color-teal);"><i class="fa-solid fa-arrow-down" style="font-size: 9px;"></i> ${formatBytes(vm.netin || 0, 1)}</span><br>
+                        <span style="color: var(--color-purple);"><i class="fa-solid fa-arrow-up" style="font-size: 9px;"></i> ${formatBytes(vm.netout || 0, 1)}</span>
+                    </div>
                 ` : '-'}
             </td>
             <td>${formatUptime(vm.uptime)}</td>
@@ -1257,8 +1347,12 @@ elBtnClearLogs.addEventListener('click', () => {
     if (activeTab === 'system') {
         elConsoleLogs.innerHTML = '';
         addConsoleLog('Log riwayat sistem dibersihkan.', 'info');
+    } else if (activeTab === 'sla') {
+        slaAlerts = [];
+        renderSlaAlerts();
+        showToast('Riwayat alarm SLA dibersihkan.');
     } else {
-        showToast('Hanya System Logs yang dapat dibersihkan secara manual.');
+        showToast('Hanya System Logs dan SLA Alerts yang dapat dibersihkan secara manual.');
     }
 });
 

@@ -104,11 +104,11 @@ DASHBOARD_PASSWORD=${config.dashboardPassword}
 let demoNetworkRxHistory = Array.from({ length: 20 }, () => Math.floor(50 + Math.random() * 50));
 let demoNetworkTxHistory = Array.from({ length: 20 }, () => Math.floor(20 + Math.random() * 30));
 let demoVms = [
-  { vmid: 101, name: 'web-server-01', status: 'running', type: 'qemu', node: 'pve-node-01', cpu: 0.12, mem: 4294967296 * 0.45, maxmem: 4294967296, uptime: 1065600 },
-  { vmid: 102, name: 'db-master-02', status: 'running', type: 'qemu', node: 'pve-node-01', cpu: 0.35, mem: 17179869184 * 0.68, maxmem: 17179869184, uptime: 691200 },
-  { vmid: 103, name: 'mail-mx-01', status: 'stopped', type: 'qemu', node: 'pve-node-01', cpu: 0, mem: 0, maxmem: 2147483648, uptime: 0 },
-  { vmid: 201, name: 'app-engine-03', status: 'running', type: 'lxc', node: 'pve-node-01', cpu: 0.08, mem: 2147483648 * 0.32, maxmem: 2147483648, uptime: 86400 },
-  { vmid: 301, name: 'plex-media', status: 'running', type: 'qemu', node: 'pve-node-01', cpu: 0.22, mem: 8589934592 * 0.74, maxmem: 8589934592, uptime: 1296000 }
+  { vmid: 101, name: 'web-server-01', status: 'running', type: 'qemu', node: 'pve-node-01', cpu: 0.12, mem: 4294967296 * 0.45, maxmem: 4294967296, netin: 1542849021, netout: 954832049, uptime: 1065600 },
+  { vmid: 102, name: 'db-master-02', status: 'running', type: 'qemu', node: 'pve-node-01', cpu: 0.35, mem: 17179869184 * 0.68, maxmem: 17179869184, netin: 8542981023, netout: 23149801200, uptime: 691200 },
+  { vmid: 103, name: 'mail-mx-01', status: 'stopped', type: 'qemu', node: 'pve-node-01', cpu: 0, mem: 0, maxmem: 2147483648, netin: 0, netout: 0, uptime: 0 },
+  { vmid: 201, name: 'app-engine-03', status: 'running', type: 'lxc', node: 'pve-node-01', cpu: 0.08, mem: 2147483648 * 0.32, maxmem: 2147483648, netin: 542019482, netout: 124802910, uptime: 86400 },
+  { vmid: 301, name: 'plex-media', status: 'running', type: 'qemu', node: 'pve-node-01', cpu: 0.22, mem: 8589934592 * 0.74, maxmem: 8589934592, netin: 95840291000, netout: 3482019400, uptime: 1296000 }
 ];
 
 const getMockNodeStatus = () => {
@@ -133,10 +133,14 @@ const getMockNodeStatus = () => {
     if (vm.status === 'running') {
       const cpuChange = (Math.random() - 0.5) * 0.08;
       const memChange = (Math.random() - 0.5) * (vm.maxmem * 0.03);
+      const netinChange = Math.floor(Math.random() * 2 * 1024 * 1024);
+      const netoutChange = Math.floor(Math.random() * 1 * 1024 * 1024);
       return {
         ...vm,
         cpu: Math.max(0.01, Math.min(0.95, vm.cpu + cpuChange)),
         mem: Math.max(vm.maxmem * 0.1, Math.min(vm.maxmem * 0.9, vm.mem + memChange)),
+        netin: vm.netin + netinChange,
+        netout: vm.netout + netoutChange,
         uptime: vm.uptime + 5
       };
     }
@@ -343,6 +347,8 @@ app.get('/api/resources', async (req, res) => {
       cpu: res.cpu || 0,
       mem: res.mem || 0,
       maxmem: res.maxmem || 0,
+      netin: res.netin || 0,
+      netout: res.netout || 0,
       uptime: res.uptime || 0
     }));
 
