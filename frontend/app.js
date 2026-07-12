@@ -675,6 +675,7 @@ function renderDashboardVmTable(vms) {
             statusText = vm.status;
         }
         
+        const isTransition = vm.status === 'starting' || vm.status === 'stopping';
         const isRunning = vm.status === 'running';
         const cpuPercent = Math.round(vm.cpu * 100);
         let cpuBarClass = 'teal';
