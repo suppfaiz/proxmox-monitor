@@ -24,6 +24,7 @@ let authToken = localStorage.getItem('pve_dashboard_token') || '';
 const elCpuRing = document.getElementById('cpu-ring');
 const elCpuValue = document.getElementById('cpu-value');
 const elCpuNodeName = document.getElementById('cpu-node-name');
+const elCpuHostModel = document.getElementById('cpu-host-model');
 
 const elRamRing = document.getElementById('ram-ring');
 const elRamValue = document.getElementById('ram-value');
@@ -491,8 +492,13 @@ async function fetchNodeStatus() {
         const node = await response.json();
         
         elNodeDisplay.textContent = `Node: ${node.node} (${node.status === 'online' ? 'Online' : 'Offline'})`;
-        elPveVersion.textContent = node.pveVersion;
+        elPveVersion.textContent = `${node.pveVersion} (${node.kversion || 'Linux Kernel'})`;
         elCpuNodeName.textContent = node.node;
+        
+        if (elCpuHostModel && node.cpuinfo) {
+            elCpuHostModel.textContent = `${node.cpuinfo.model} (${node.cpuinfo.cpus} Cores)`;
+            elCpuHostModel.title = node.cpuinfo.model;
+        }
         
         setGaugePercent(elCpuRing, elCpuValue, node.cpu * 100);
         

@@ -163,6 +163,7 @@ const getMockNodeStatus = () => {
       txHistory: demoNetworkTxHistory
     },
     pveVersion: 'Proxmox VE 8.1.4',
+    kversion: 'Linux 6.5.11-7-pve #1 SMP PREEMPT_DYNAMIC PVE 6.5.11-7 (2023-12-05T13:30Z)',
     // Detailed stats for completeness
     cpuinfo: {
       model: 'AMD Ryzen 9 5900X (12-Core, 24-Threads)',
@@ -294,6 +295,7 @@ app.get('/api/node-status', async (req, res) => {
         tx: Math.floor(Math.random() * 20 + 10)
       },
       pveVersion: `${pveVersion}`,
+      kversion: status.kversion || 'Linux Kernel',
       cpuinfo: {
         model: status.cpuinfo.model || 'Unknown CPU',
         cpus: status.cpuinfo.cpus || 1
