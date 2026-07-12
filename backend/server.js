@@ -508,6 +508,27 @@ app.post('/api/vm/:node/:vmid/status/:action', async (req, res) => {
   }
 });
 
+// Control Node (Reboot/Shutdown Host)
+app.post('/api/node/:node/status/:action', async (req, res) => {
+  const { node, action } = req.params;
+  const validActions = ['reboot', 'shutdown'];
+
+  if (!validActions.includes(action)) {
+    return res.status(400).json({ error: 'Invalid action. Must be reboot or shutdown' });
+  }
+
+  if (config.demoMode) {
+    return res.json({ success: true, message: `Node ${node} is performing ${action} (Simulated)` });
+  }
+
+  try {
+    const response = await proxmoxRequest('POST', `/nodes/${node}/status`, { command: action });
+    res.json({ success: true, message: `Node ${node} ${action} command sent successfully.`, details: response.data });
+  } catch (error) {
+    res.status(500).json({ error: `Failed to execute node command ${action}`, details: error.message });
+  }
+});
+
 // Start Server
 app.listen(PORT, () => {
   console.log(`==================================================`);

@@ -24,6 +24,15 @@ let slaAlerts = [
     { timestamp: new Date(Date.now() - 3600 * 1000).toLocaleTimeString(), vmid: 201, name: 'app-engine-03', type: 'running', message: 'SLA RESTORED: LXC app-engine-03 (201) is Online!' }
 ];
 
+// Active Proxmox Host stats
+let currentNodeName = 'pve';
+let currentNodeUptime = 0;
+let currentNodeCpuModel = '';
+let currentNodeCpus = 0;
+let currentNodeMemUsed = 0;
+let currentNodeMemTotal = 0;
+let currentNodeKversion = '';
+
 // Auth credentials token
 let authToken = localStorage.getItem('pve_dashboard_token') || '';
 
@@ -502,6 +511,15 @@ async function fetchNodeStatus() {
         const response = await authenticatedFetch(`${BACKEND_URL}/api/node-status`);
         if (!response.ok) throw new Error();
         const node = await response.json();
+        
+        // Update host stats variables
+        currentNodeName = node.node;
+        currentNodeUptime = node.uptime || 0;
+        currentNodeCpuModel = node.cpuinfo ? node.cpuinfo.model : 'Intel Xeon';
+        currentNodeCpus = node.cpuinfo ? node.cpuinfo.cpus : 8;
+        currentNodeMemUsed = node.memory ? node.memory.used : 0;
+        currentNodeMemTotal = node.memory ? node.memory.total : 0;
+        currentNodeKversion = node.kversion || 'Linux Kernel';
         
         elNodeDisplay.textContent = `Node: ${node.node} (${node.status === 'online' ? 'Online' : 'Offline'})`;
         elPveVersion.textContent = `${node.pveVersion} (${node.kversion || 'Linux Kernel'})`;
@@ -1033,6 +1051,27 @@ let terminalInputHandler = null;
 window.openConsole = function(node, vmid, vmName, type) {
     addConsoleLog(`Membuka console untuk ${vmName} (ID: ${vmid})...`, 'info');
     
+    if (!demoModeActive) {
+        // Production Mode: Open direct Proxmox VE Integrated noVNC Console or Host Shell
+        if (!proxmoxWebUrl) {
+            showToast('Alamat IP Proxmox kosong atau belum diset.');
+            return;
+        }
+        
+        let consoleUrl = '';
+        if (vmid === 'node') {
+            consoleUrl = `${proxmoxWebUrl}/?console=shell&novnc=1&node=${node}`;
+            addConsoleLog(`Membuka shell terminal host node ${node} di tab baru.`, 'success');
+        } else {
+            const consoleType = type === 'qemu' ? 'kvm' : 'lxc';
+            consoleUrl = `${proxmoxWebUrl}/?console=${consoleType}&novnc=1&vmid=${vmid}&node=${node}`;
+            addConsoleLog(`Membuka console VNC ${vmName} (ID: ${vmid}) di tab baru.`, 'success');
+        }
+        
+        window.open(consoleUrl, '_blank');
+        return;
+    }
+
     if (demoModeActive) {
         // Reset tabs to CLI first
         const tabs = document.querySelectorAll('.console-tab');
@@ -1054,7 +1093,11 @@ window.openConsole = function(node, vmid, vmName, type) {
         const vncBg = document.getElementById('vnc-desktop-bg');
         const vncTitle = document.getElementById('vnc-window-title');
         
-        if (vmName.toLowerCase().includes('win')) {
+        if (vmid === 'node') {
+            vncBg.className = 'vnc-desktop-wrapper';
+            vncBg.style.background = 'linear-gradient(135deg, #100b19 0%, #1a1525 100%)';
+            vncTitle.innerHTML = `<i class="fa-solid fa-server" style="color: var(--color-teal);"></i> Node Dashboard (${node})`;
+        } else if (vmName.toLowerCase().includes('win')) {
             vncBg.className = 'vnc-desktop-wrapper win11';
             vncBg.style.background = 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)';
             vncTitle.innerHTML = `<i class="fa-brands fa-windows" style="color: #0078d4;"></i> Task Manager (Windows Server)`;
@@ -1068,8 +1111,8 @@ window.openConsole = function(node, vmid, vmName, type) {
         document.getElementById('vnc-app-window').style.display = 'flex';
 
         // Update initial mock VNC RAM & CPU stats
-        const vmMem = vmsFindMem(vmid);
-        const vmMaxMem = vmsFindMaxMem(vmid);
+        const vmMem = vmid === 'node' ? currentNodeMemUsed : vmsFindMem(vmid);
+        const vmMaxMem = vmid === 'node' ? currentNodeMemTotal : vmsFindMaxMem(vmid);
         document.getElementById('vnc-monitor-ram').textContent = `${formatBytes(vmMem, 2)} / ${formatBytes(vmMaxMem, 0)}`;
         const ramPercent = vmMaxMem > 0 ? Math.round((vmMem / vmMaxMem) * 100) : 40;
         document.getElementById('vnc-monitor-rambar').style.width = `${ramPercent}%`;
@@ -1102,22 +1145,23 @@ window.openConsole = function(node, vmid, vmName, type) {
         }, 2000);
 
         // Open simulated Web Terminal inside Dashboard
-        elTerminalTitle.textContent = `[${type.toUpperCase()} - VM ${vmid}] ${vmName}`;
-        elTerminalPrompt.textContent = `root@${vmName}:~# `;
+        elTerminalTitle.textContent = vmid === 'node' ? `[SHELL - NODE ${node}] Host Shell` : `[${type.toUpperCase()} - VM ${vmid}] ${vmName}`;
+        elTerminalPrompt.textContent = vmid === 'node' ? `root@${node}:~# ` : `root@${vmName}:~# `;
         
+        const logName = vmid === 'node' ? node : vmName;
         elTerminalBody.innerHTML = `
-<span style="color: #00F2FE;">[INFO] Connecting to ${vmName} console tty1 via simulated Proxmox VNC...</span>
+<span style="color: #00F2FE;">[INFO] Connecting to ${logName} console tty1 via simulated Proxmox VNC...</span>
 <span style="color: #10b981;">[OK] WebSocket handshakes completed successfully.</span>
 <span style="color: #f59e0b;">[WARN] System loading complete. Automatically logging in...</span>
 
-Debian GNU/Linux 12 ${vmName} tty1
-${vmName} login: root (automatic login)
+Debian GNU/Linux 12 ${logName} tty1
+${logName} login: root (automatic login)
 Last login: ${new Date().toLocaleString()} on tty1
 
 Welcome to Proxmox VE Web Console Terminal!
 Running in simulation (demo) mode.
 
-Ketik '<span style="color: #00F2FE;">help</span>' untuk daftar perintah, '<span style="color: #00F2FE;">neofetch</span>' untuk spek VM, atau '<span style="color: #FF5E62;">exit</span>' untuk menutup.
+Ketik '<span style="color: #00F2FE;">help</span>' untuk daftar perintah, '<span style="color: #00F2FE;">neofetch</span>' untuk spek, atau '<span style="color: #FF5E62;">exit</span>' untuk menutup.
 `;
         elTerminalModal.classList.add('active');
         elTerminalInput.value = '';
@@ -1137,7 +1181,8 @@ Ketik '<span style="color: #00F2FE;">help</span>' untuk daftar perintah, '<span 
                 if (cmd === '') return;
                 
                 // Print command
-                elTerminalBody.innerHTML += `\nroot@${vmName}:~# ${cmd}`;
+                const promptUser = vmid === 'node' ? `root@${node}:~# ` : `root@${vmName}:~# `;
+                elTerminalBody.innerHTML += `\n${promptUser}${cmd}`;
                 
                 if (cmd === 'clear') {
                     elTerminalBody.innerHTML = 'Terminal cleared. Type help for list of commands.\n';
@@ -1147,26 +1192,42 @@ Ketik '<span style="color: #00F2FE;">help</span>' untuk daftar perintah, '<span 
                     elTerminalBody.innerHTML += `
 Perintah tersedia:
   - <span style="color: #00F2FE;">help</span>      : Menampilkan menu bantuan ini
-  - <span style="color: #00F2FE;">neofetch</span>  : Informasi spesifikasi sistem Virtual Machine
+  - <span style="color: #00F2FE;">neofetch</span>  : Informasi spesifikasi sistem
   - <span style="color: #00F2FE;">ls</span>        : Menampilkan berkas direktori lokal
   - <span style="color: #00F2FE;">df -h</span>     : Informasi kapasitas penyimpanan disk
-  - <span style="color: #00F2FE;">uptime</span>    : Menampilkan durasi hidup VM
+  - <span style="color: #00F2FE;">uptime</span>    : Menampilkan durasi hidup sistem
   - <span style="color: #00F2FE;">clear</span>     : Membersihkan layar terminal
   - <span style="color: #FF5E62;">exit</span>      : Keluar dari console`;
                 } else if (cmd === 'neofetch') {
-                    elTerminalBody.innerHTML += `
+                    if (vmid === 'node') {
+                        elTerminalBody.innerHTML += `
+   <span style="color: #b15eff;">_,met$$$$$gg.</span>      <span style="color: var(--color-teal); font-weight: bold;">root@${node}</span>
+  <span style="color: #b15eff;">,g$$$$$$$$$$$$$$$P.</span>    ------------------
+ ,g$$P"     """Y$$.".    OS: Proxmox Virtual Environment (PVE)
+ ,g$$P'          "$$$.     Kernel: ${currentNodeKversion}
+'$$P            "$$$     Uptime: ${formatUptime(currentNodeUptime)}
+ $$P             $$$     Shell: bash 5.2.15
+ $$P             $$$     CPU: ${currentNodeCpuModel} (${currentNodeCpus} Cores)
+ $$P             $$$     Memory: ${formatBytes(currentNodeMemUsed)} / ${formatBytes(currentNodeMemTotal)}
+ Y$$$.           $$$     Host: Physical Hypervisor Node
+  <span style="color: #b15eff;">Y$$$$$.       _.$$$</span>     Theme: Glassmorphism Dark Neon
+   <span style="color: #b15eff;">'Y$$$$$$$$$$$$$$P'</span>
+     <span style="color: #b15eff;">'"Y$$$$$$$$P"'</span>`;
+                    } else {
+                        elTerminalBody.innerHTML += `
    <span style="color: #b15eff;">_,met$$$$$gg.</span>      <span style="color: var(--color-teal); font-weight: bold;">root@${vmName}</span>
   <span style="color: #b15eff;">,g$$$$$$$$$$$$$$$P.</span>    ------------------
- <span style="color: #b15eff;">,g$$P"     """Y$$.".</span>    OS: Debian GNU/Linux 12 (bookworm) x86_64
- <span style="color: #b15eff;">$$P'          "$$$.</span>     Kernel: Linux 6.1.0-10-amd64
-<span style="color: #b15eff;">'$$P            "$$$</span>     Uptime: ${formatUptime(vmsFindUptime(vmid))}
-<span style="color: #b15eff;"> $$P             $$$</span>     Shell: bash 5.2.15
-<span style="color: #b15eff;"> $$P             $$$</span>     CPU: QEMU Virtual CPU (2 Cores)
-<span style="color: #b15eff;"> $$P             $$$</span>     Memory: ${formatBytes(vmsFindMem(vmid))} / ${formatBytes(vmsFindMaxMem(vmid))}
-<span style="color: #b15eff;"> Y$$$.           $$$</span>     Host: Proxmox Virtualization Node
- <span style="color: #b15eff;">Y$$$$$.       _.$$$</span>     Theme: Glassmorphism Dark Neon
-  <span style="color: #b15eff;">'Y$$$$$$$$$$$$$$P'</span>
-    <span style="color: #b15eff;">'"Y$$$$$$$$P"'</span>`;
+ ,g$$P"     """Y$$.".    OS: Debian GNU/Linux 12 (bookworm) x86_64
+ ,g$$P'          "$$$.     Kernel: Linux 6.1.0-10-amd64
+'$$P            "$$$     Uptime: ${formatUptime(vmsFindUptime(vmid))}
+ $$P             $$$     Shell: bash 5.2.15
+ $$P             $$$     CPU: QEMU Virtual CPU (2 Cores)
+ $$P             $$$     Memory: ${formatBytes(vmsFindMem(vmid))} / ${formatBytes(vmsFindMaxMem(vmid))}
+ Y$$$.           $$$     Host: Proxmox Virtualization Node
+  <span style="color: #b15eff;">Y$$$$$.       _.$$$</span>     Theme: Glassmorphism Dark Neon
+   <span style="color: #b15eff;">'Y$$$$$$$$$$$$$$P'</span>
+     <span style="color: #b15eff;">'"Y$$$$$$$$P"'</span>`;
+                    }
                 } else if (cmd === 'ls') {
                     elTerminalBody.innerHTML += `\nbin/  boot/  dev/  etc/  home/  lib/  media/  mnt/  opt/  proc/  root/  run/  srv/  sys/  var/  www/`;
                 } else if (cmd === 'df -h') {
@@ -1176,7 +1237,8 @@ Filesystem      Size  Used Avail Use% Mounted on
 udev            2.0G     0  2.0G   0% /dev
 tmpfs           396M  1.1M  395M   1% /run`;
                 } else if (cmd === 'uptime') {
-                    elTerminalBody.innerHTML += `\n uptime: ${formatUptime(vmsFindUptime(vmid))} &mdash; Users logged: 1 &mdash; Load avg: 0.12, 0.08, 0.05`;
+                    const uptimeVal = vmid === 'node' ? currentNodeUptime : vmsFindUptime(vmid);
+                    elTerminalBody.innerHTML += `\n uptime: ${formatUptime(uptimeVal)} &mdash; Users logged: 1 &mdash; Load avg: 0.12, 0.08, 0.05`;
                 } else {
                     elTerminalBody.innerHTML += `\nbash: command not found: ${cmd}`;
                 }
@@ -1185,20 +1247,6 @@ tmpfs           396M  1.1M  395M   1% /run`;
             }
         };
         elTerminalInput.addEventListener('keydown', terminalInputHandler);
-    } else {
-        // Production Mode: Open direct Proxmox VE Integrated noVNC Console
-        if (!proxmoxWebUrl) {
-            showToast('Alamat IP Proxmox kosong atau belum diset.');
-            return;
-        }
-        
-        // PVE Console Web URL pattern
-        // qemu is kvm, container is lxc
-        const consoleType = type === 'qemu' ? 'kvm' : 'lxc';
-        const consoleUrl = `${proxmoxWebUrl}/?console=${consoleType}&novnc=1&vmid=${vmid}&node=${node}`;
-        
-        window.open(consoleUrl, '_blank');
-        addConsoleLog(`Membuka console VNC ${vmName} (ID: ${vmid}) di tab baru.`, 'success');
     }
 };
 
@@ -1269,8 +1317,12 @@ function hideModal() {
 
 elBtnConfirmExecute.addEventListener('click', () => {
     if (pendingAction) {
-        const { node, vmid, action } = pendingAction;
-        executeVmAction(node, vmid, action);
+        const { node, vmid, action, type } = pendingAction;
+        if (type === 'node') {
+            executeNodeAction(node, action);
+        } else {
+            executeVmAction(node, vmid, action);
+        }
         hideModal();
     }
 });
@@ -1355,6 +1407,53 @@ elBtnClearLogs.addEventListener('click', () => {
         showToast('Hanya System Logs dan SLA Alerts yang dapat dibersihkan secara manual.');
     }
 });
+
+// --- Host Node Shell & Power Actions Binding ---
+const elBtnNodeShell = document.getElementById('btn-node-shell');
+const elBtnNodePower = document.getElementById('btn-node-power');
+const elNodePowerDropdown = document.getElementById('node-power-dropdown');
+
+if (elBtnNodeShell) {
+    elBtnNodeShell.addEventListener('click', () => {
+        openConsole(currentNodeName, 'node', 'Host Shell', 'shell');
+    });
+}
+
+if (elBtnNodePower && elNodePowerDropdown) {
+    elBtnNodePower.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const show = elNodePowerDropdown.style.display === 'block';
+        elNodePowerDropdown.style.display = show ? 'none' : 'block';
+    });
+    document.addEventListener('click', () => {
+        elNodePowerDropdown.style.display = 'none';
+    });
+}
+
+window.confirmNodeAction = function(action) {
+    pendingAction = { node: currentNodeName, action, type: 'node' };
+    let verb = 'me-reboot';
+    if (action === 'shutdown') verb = 'mematikan (shutdown)';
+    
+    elConfirmModalText.innerHTML = `Apakah Anda yakin ingin <strong>${verb}</strong> server utama Proxmox Host <strong>${currentNodeName}</strong>?<br><br><span style="color: #ff5e62; font-weight: bold;"><i class="fa-solid fa-triangle-exclamation"></i> PERINGATAN: Tindakan ini akan mematikan seluruh virtual machine dan container yang sedang berjalan!</span>`;
+    elConfirmModal.classList.add('active');
+};
+
+async function executeNodeAction(node, action) {
+    addConsoleLog(`Mengirim perintah ${action.toUpperCase()} ke node host ${node}...`, 'info');
+    try {
+        const response = await authenticatedFetch(`${BACKEND_URL}/api/node/${node}/status/${action}`, {
+            method: 'POST'
+        });
+        if (!response.ok) throw new Error();
+        const result = await response.json();
+        showToast(`Perintah ${action} host berhasil dikirim!`);
+        addConsoleLog(`Host ${node} sedang melakukan proses ${action}.`, 'success');
+    } catch (error) {
+        showToast(`Gagal mengeksekusi perintah ${action} pada host.`);
+        addConsoleLog(`Gagal perintah host ${action}: ${error.message}`, 'error');
+    }
+}
 
 // --- Main Event Loop ---
 
