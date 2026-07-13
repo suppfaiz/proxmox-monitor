@@ -547,7 +547,8 @@ app.get('/api/status', (req, res) => {
     status: 'online',
     mode: config.demoMode ? 'demo' : 'production',
     message: config.demoMode ? 'Backend running in Demo (Simulation) Mode' : 'Backend connected to Proxmox VE API',
-    proxmoxWebUrl: config.apiUrl.replace('/api2/json', '')
+    proxmoxWebUrl: config.apiUrl.replace('/api2/json', ''),
+    mikrotikOnline: cachedMikrotikStats.online
   });
 });
 

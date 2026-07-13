@@ -56,7 +56,10 @@ const elNodeDisplay = document.getElementById('pve-node-display');
 const elPveVersion = document.getElementById('pve-version-tag');
 const elBackendStatus = document.getElementById('backend-status-text');
 const elBackendMode = document.getElementById('backend-mode-badge');
-const elPulseDot = document.querySelector('.pulse-dot');
+const elPulseDot = document.getElementById('backend-status-dot');
+const elMikrotikStatusDot = document.getElementById('mikrotik-status-dot');
+const elMikrotikStatusSidebarText = document.getElementById('mikrotik-status-sidebar-text');
+const elMikrotikModeBadge = document.getElementById('mikrotik-mode-badge');
 
 const elVmTableBody = document.getElementById('vm-table-body');
 const elDashboardVmBody = document.getElementById('dashboard-vm-body');
@@ -601,7 +604,8 @@ async function checkBackendStatus() {
         if (!response.ok) throw new Error();
         const data = await response.json();
         
-        elPulseDot.className = 'pulse-dot green';
+        elPulseDot.className = 'pulse-dot';
+        elPulseDot.style.backgroundColor = '#111827';
         elBackendStatus.textContent = 'Connected Backend';
         
         demoModeActive = data.mode === 'demo';
@@ -610,26 +614,59 @@ async function checkBackendStatus() {
         if (demoModeActive) {
             elBackendMode.textContent = 'DEMO SIMULATION';
             elBackendMode.className = 'badge-demo';
-            elBackendMode.style.background = 'rgba(245, 158, 11, 0.1)';
-            elBackendMode.style.borderColor = 'rgba(245, 158, 11, 0.3)';
-            elBackendMode.style.color = '#f59e0b';
+            elBackendMode.style.background = '#ffffff';
+            elBackendMode.style.color = '#9ca3af';
+            elBackendMode.style.borderColor = '#e5e7eb';
         } else {
             elBackendMode.textContent = 'PROXMOX ACTIVE';
             elBackendMode.className = 'badge-demo';
-            elBackendMode.style.color = '#10b981';
-            elBackendMode.style.borderColor = 'rgba(16, 185, 129, 0.3)';
-            elBackendMode.style.background = 'rgba(16, 185, 129, 0.1)';
+            elBackendMode.style.background = '#111827';
+            elBackendMode.style.color = '#ffffff';
+            elBackendMode.style.borderColor = '#111827';
+        }
+
+        // Update MikroTik status in sidebar footer
+        const isMikrotikOnline = data.mikrotikOnline;
+        if (isMikrotikOnline) {
+            elMikrotikStatusDot.className = 'pulse-dot';
+            elMikrotikStatusDot.style.backgroundColor = '#111827';
+            elMikrotikStatusSidebarText.textContent = 'MikroTik: Connected';
+            
+            elMikrotikModeBadge.textContent = 'MIKROTIK ACTIVE';
+            elMikrotikModeBadge.style.background = '#111827';
+            elMikrotikModeBadge.style.color = '#ffffff';
+            elMikrotikModeBadge.style.borderColor = '#111827';
+        } else {
+            elMikrotikStatusDot.className = 'pulse-dot';
+            elMikrotikStatusDot.style.backgroundColor = '#9ca3af';
+            elMikrotikStatusSidebarText.textContent = 'MikroTik: Offline';
+            
+            elMikrotikModeBadge.textContent = 'MIKROTIK OFFLINE';
+            elMikrotikModeBadge.style.background = '#ffffff';
+            elMikrotikModeBadge.style.color = '#9ca3af';
+            elMikrotikModeBadge.style.borderColor = '#e5e7eb';
         }
         return true;
     } catch (e) {
         elPulseDot.className = 'pulse-dot';
-        elPulseDot.style.backgroundColor = '#ef4444';
+        elPulseDot.style.backgroundColor = '#9ca3af';
         elBackendStatus.textContent = 'Backend Offline';
+        
         elBackendMode.textContent = 'NO CONNECTION';
         elBackendMode.className = 'badge-demo';
-        elBackendMode.style.color = '#ef4444';
-        elBackendMode.style.borderColor = 'rgba(239, 68, 68, 0.3)';
-        elBackendMode.style.background = 'rgba(239, 68, 68, 0.1)';
+        elBackendMode.style.background = '#ffffff';
+        elBackendMode.style.color = '#9ca3af';
+        elBackendMode.style.borderColor = '#e5e7eb';
+
+        elMikrotikStatusDot.className = 'pulse-dot';
+        elMikrotikStatusDot.style.backgroundColor = '#9ca3af';
+        elMikrotikStatusSidebarText.textContent = 'MikroTik: Offline';
+
+        elMikrotikModeBadge.textContent = 'MIKROTIK OFFLINE';
+        elMikrotikModeBadge.style.background = '#ffffff';
+        elMikrotikModeBadge.style.color = '#9ca3af';
+        elMikrotikModeBadge.style.borderColor = '#e5e7eb';
+
         return false;
     }
 }
