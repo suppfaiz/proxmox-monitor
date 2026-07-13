@@ -11,7 +11,7 @@
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Custom Style -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="{{ asset('css/style.css') }}">
 </head>
 <body>
     <!-- Login Screen Overlay -->
@@ -976,6 +976,6 @@
     <!-- Notification Toast -->
     <div class="toast" id="toast-notification">Action successfully sent.</div>
 
-    <script src="app.js"></script>
+    <script src="{{ asset('js/app.js') }}"></script>
 </body>
 </html>

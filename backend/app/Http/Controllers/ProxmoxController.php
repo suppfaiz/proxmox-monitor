@@ -327,6 +327,131 @@ class ProxmoxController extends Controller
         }
     }
 
+    public function getActiveNodeStatus()
+    {
+        $config = $this->getConfig();
+
+        if ($config['demoMode']) {
+            return response()->json([
+                'node' => 'jnoc-node-01',
+                'status' => 'online',
+                'cpu' => 0.2 + (rand(0, 100) / 200),
+                'memory' => [
+                    'used' => 52.4 * 1024 * 1024 * 1024,
+                    'total' => 80 * 1024 * 1024 * 1024
+                ],
+                'pveVersion' => 'Proxmox VE 8.1.4',
+                'kversion' => 'Linux 6.5.11-7-pve',
+                'cpuinfo' => [
+                    'model' => 'AMD Ryzen 9 5900X',
+                    'cpus' => 24
+                ],
+                'loadavg' => [
+                    (string)(0.3 + rand(0, 50)/100),
+                    (string)(0.2 + rand(0, 40)/100),
+                    (string)(0.2 + rand(0, 30)/100)
+                ],
+                'wait' => 0.01
+            ]);
+        }
+
+        try {
+            $nodesRes = $this->proxmoxRequest('GET', 'nodes');
+            $nodes = $nodesRes['data'] ?? [];
+            if (empty($nodes)) {
+                return response()->json(['error' => 'No Proxmox nodes found'], 404);
+            }
+            $targetNode = $nodes[0]['node'];
+            
+            $statusRes = $this->proxmoxRequest('GET', "nodes/{$targetNode}/status");
+            $status = $statusRes['data'] ?? [];
+            
+            $versionRes = $this->proxmoxRequest('GET', 'version');
+            $version = $versionRes['data']['version'] ?? '8.x';
+
+            return response()->json([
+                'node' => $targetNode,
+                'status' => 'online',
+                'cpu' => $status['cpu'] ?? 0,
+                'memory' => [
+                    'used' => $status['memory']['used'] ?? 0,
+                    'total' => $status['memory']['total'] ?? 0
+                ],
+                'pveVersion' => "Proxmox VE {$version}",
+                'kversion' => $status['kversion'] ?? 'Linux Kernel',
+                'cpuinfo' => [
+                    'model' => $status['cpuinfo']['model'] ?? 'Unknown CPU',
+                    'cpus' => $status['cpuinfo']['cpus'] ?? 1
+                ],
+                'loadavg' => $status['loadavg'] ?? [0, 0, 0],
+                'wait' => $status['wait'] ?? 0
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to fetch Proxmox Node Status', 'details' => $e->getMessage()], 500);
+        }
+    }
+
+    public function getActiveNodeStorage()
+    {
+        $config = $this->getConfig();
+
+        if ($config['demoMode']) {
+            return response()->json([
+                [ 'storage' => 'local', 'type' => 'dir', 'content' => 'iso,vztmpl,backup', 'size' => 100 * 1024 * 1024 * 1024, 'used' => 42 * 1024 * 1024 * 1024, 'active' => 1, 'shared' => 0 ],
+                [ 'storage' => 'local-lvm', 'type' => 'lvmthin', 'content' => 'images,rootdir', 'size' => 800 * 1024 * 1024 * 1024, 'used' => 512 * 1024 * 1024 * 1024, 'active' => 1, 'shared' => 0 ],
+                [ 'storage' => 'backup-nas', 'type' => 'nfs', 'content' => 'backup', 'size' => 2048 * 1024 * 1024 * 1024, 'used' => 1120 * 1024 * 1024 * 1024, 'active' => 1, 'shared' => 1 ]
+            ]);
+        }
+
+        try {
+            $res = $this->proxmoxRequest('GET', 'cluster/resources?type=storage');
+            $storages = $res['data'] ?? [];
+            
+            $formatted = array_map(function ($st) {
+                return [
+                    'storage' => $st['storage'] ?? $st['id'] ?? 'unknown',
+                    'type' => $st['plugintype'] ?? 'unknown',
+                    'content' => $st['content'] ?? '',
+                    'size' => $st['maxdisk'] ?? 0,
+                    'used' => $st['disk'] ?? 0,
+                    'active' => $st['active'] ?? 1,
+                    'shared' => $st['shared'] ?? 0,
+                ];
+            }, $storages);
+            
+            return response()->json($formatted);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to fetch Proxmox storage pools', 'details' => $e->getMessage()], 500);
+        }
+    }
+
+    public function getActiveNodeTasks()
+    {
+        $config = $this->getConfig();
+
+        if ($config['demoMode']) {
+            return response()->json([
+                [ 'upid' => 'UPID:node-01:001:002:start:qemu/100', 'node' => 'jnoc-node-01', 'user' => 'root@pam', 'type' => 'qemustart', 'status' => 'OK', 'starttime' => time() - 3600, 'endtime' => time() - 3590 ],
+                [ 'upid' => 'UPID:node-01:003:004:stop:qemu/101', 'node' => 'jnoc-node-01', 'user' => 'root@pam', 'type' => 'qemustop', 'status' => 'OK', 'starttime' => time() - 7200, 'endtime' => time() - 7150 ],
+                [ 'upid' => 'UPID:node-02:005:006:start:lxc/200', 'node' => 'jnoc-node-02', 'user' => 'root@pam', 'type' => 'lxcstart', 'status' => 'OK', 'starttime' => time() - 10000, 'endtime' => time() - 9980 ]
+            ]);
+        }
+
+        try {
+            $nodesRes = $this->proxmoxRequest('GET', 'nodes');
+            $nodes = $nodesRes['data'] ?? [];
+            if (empty($nodes)) {
+                return response()->json([]);
+            }
+            $targetNode = $nodes[0]['node'];
+            
+            $tasksRes = $this->proxmoxRequest('GET', "nodes/{$targetNode}/tasks?limit=15");
+            return response()->json($tasksRes['data'] ?? []);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to fetch Proxmox tasks log', 'details' => $e->getMessage()], 500);
+        }
+    }
+
     private function getDemoResources()
     {
         if (\Illuminate\Support\Facades\Cache::has('demo_vms')) {

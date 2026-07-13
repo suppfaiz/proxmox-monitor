@@ -17,6 +17,9 @@ Route::middleware('auth.session')->group(function () {
     Route::get('/status', [ProxmoxController::class, 'getStatus']);
     Route::get('/resources', [ProxmoxController::class, 'getResources']);
     Route::get('/nodes-list', [ProxmoxController::class, 'getNodesList']);
+    Route::get('/node-status', [ProxmoxController::class, 'getActiveNodeStatus']);
+    Route::get('/storage', [ProxmoxController::class, 'getActiveNodeStorage']);
+    Route::get('/tasks', [ProxmoxController::class, 'getActiveNodeTasks']);
     Route::get('/node/{node}/status', [ProxmoxController::class, 'getNodeStatus']);
     Route::get('/node/{node}/storage', [ProxmoxController::class, 'getNodeStorage']);
     Route::get('/node/{node}/tasks', [ProxmoxController::class, 'getNodeTasks']);
