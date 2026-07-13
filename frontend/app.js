@@ -211,6 +211,13 @@ function showAlert(message) {
 function handleRoute() {
     const hash = window.location.hash || '#dashboard';
     const target = hash.replace('#', '');
+    
+    // Guard admin-only routes
+    if ((target === 'users' || target === 'history') && currentUserRole !== 'admin') {
+        window.location.hash = '#dashboard';
+        return;
+    }
+    
     currentActiveRoute = target;
     
     // 1. Sidebar items highlight
@@ -945,10 +952,10 @@ function renderVmTable(vms) {
             <td>${formatUptime(vm.uptime)}</td>
             <td class="text-right">
                 <div class="actions-cell">
-                    <button class="btn-action start" onclick="confirmAction('${vm.node}', ${vm.vmid}, 'start', '${vm.name}')" ${isRunning || isTransition ? 'disabled' : ''} title="Start VM"><i class="fa-solid fa-play"></i></button>
-                    <button class="btn-action stop" onclick="confirmAction('${vm.node}', ${vm.vmid}, 'shutdown', '${vm.name}')" ${!isRunning || isTransition ? 'disabled' : ''} title="Shutdown VM"><i class="fa-solid fa-power-off"></i></button>
-                    <button class="btn-action console" onclick="openConsole('${vm.node}', ${vm.vmid}, '${vm.name}', '${vm.type}')" ${!isRunning ? 'disabled' : ''} title="Buka Console"><i class="fa-solid fa-terminal"></i></button>
-                    <button class="btn-action reboot" onclick="confirmAction('${vm.node}', ${vm.vmid}, 'reboot', '${vm.name}')" ${!isRunning || isTransition ? 'disabled' : ''} title="Reboot VM"><i class="fa-solid fa-arrows-rotate"></i></button>
+                    <button class="btn-action start staff-hide" onclick="confirmAction('${vm.node}', ${vm.vmid}, 'start', '${vm.name}')" ${isRunning || isTransition ? 'disabled' : ''} title="Start VM"><i class="fa-solid fa-play"></i></button>
+                    <button class="btn-action stop staff-hide" onclick="confirmAction('${vm.node}', ${vm.vmid}, 'shutdown', '${vm.name}')" ${!isRunning || isTransition ? 'disabled' : ''} title="Shutdown VM"><i class="fa-solid fa-power-off"></i></button>
+                    <button class="btn-action console staff-hide" onclick="openConsole('${vm.node}', ${vm.vmid}, '${vm.name}', '${vm.type}')" ${!isRunning ? 'disabled' : ''} title="Buka Console"><i class="fa-solid fa-terminal"></i></button>
+                    <button class="btn-action reboot staff-hide" onclick="confirmAction('${vm.node}', ${vm.vmid}, 'reboot', '${vm.name}')" ${!isRunning || isTransition ? 'disabled' : ''} title="Reboot VM"><i class="fa-solid fa-arrows-rotate"></i></button>
                 </div>
             </td>
         `;
@@ -1022,9 +1029,9 @@ function renderDashboardVmTable(vms) {
             <td>${formatUptime(vm.uptime)}</td>
             <td class="text-right">
                 <div class="actions-cell">
-                    <button class="btn-action start" onclick="confirmAction('${vm.node}', ${vm.vmid}, 'start', '${vm.name}')" ${isRunning ? 'disabled' : ''} title="Start VM"><i class="fa-solid fa-play"></i></button>
-                    <button class="btn-action stop" onclick="confirmAction('${vm.node}', ${vm.vmid}, 'shutdown', '${vm.name}')" ${!isRunning || isTransition ? 'disabled' : ''} title="Shutdown VM"><i class="fa-solid fa-power-off"></i></button>
-                    <button class="btn-action console" onclick="openConsole('${vm.node}', ${vm.vmid}, '${vm.name}', '${vm.type}')" ${!isRunning ? 'disabled' : ''} title="Buka Console"><i class="fa-solid fa-terminal"></i></button>
+                    <button class="btn-action start staff-hide" onclick="confirmAction('${vm.node}', ${vm.vmid}, 'start', '${vm.name}')" ${isRunning ? 'disabled' : ''} title="Start VM"><i class="fa-solid fa-play"></i></button>
+                    <button class="btn-action stop staff-hide" onclick="confirmAction('${vm.node}', ${vm.vmid}, 'shutdown', '${vm.name}')" ${!isRunning || isTransition ? 'disabled' : ''} title="Shutdown VM"><i class="fa-solid fa-power-off"></i></button>
+                    <button class="btn-action console staff-hide" onclick="openConsole('${vm.node}', ${vm.vmid}, '${vm.name}', '${vm.type}')" ${!isRunning ? 'disabled' : ''} title="Buka Console"><i class="fa-solid fa-terminal"></i></button>
                 </div>
             </td>
         `;
@@ -1366,7 +1373,7 @@ async function fetchSwitchesData() {
                     <td style="font-size: 11px; color: var(--text-secondary);">${lastDownStr}</td>
                     <td style="font-size: 11px; color: var(--text-secondary);">${lastUpStr}</td>
                     <td class="text-right">
-                        <button class="btn btn-secondary" onclick="deleteSwitch('${dev.id}')" style="padding: 4px 8px; font-size: 11px; border-color: #d1d5db;">
+                        <button class="btn btn-secondary staff-hide" onclick="deleteSwitch('${dev.id}')" style="padding: 4px 8px; font-size: 11px; border-color: #d1d5db;">
                             <i class="fa-solid fa-trash"></i>
                         </button>
                     </td>
