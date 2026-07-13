@@ -9,6 +9,8 @@ const GAUGE_CIRCUMFERENCE = 314.16;
 // --- Global App State ---
 let networkChart = null;
 let largeNetworkChart = null;
+let mikrotikChart = null;
+let mikrotikDetailChart = null;
 let currentVms = [];
 let pendingAction = null;
 let currentActiveRoute = 'dashboard';
@@ -300,6 +302,7 @@ function initCharts() {
     mTxGradient.addColorStop(0, 'rgba(255, 153, 102, 0.25)');
     mTxGradient.addColorStop(1, 'rgba(255, 153, 102, 0.0)');
 
+    // 1. Proxmox VE main chart
     networkChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -324,7 +327,34 @@ function initCharts() {
                     fill: true,
                     tension: 0.35,
                     pointRadius: 0
-                },
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { display: false }, ticks: { display: false } },
+                y: {
+                    grid: { color: 'rgba(255, 255, 255, 0.04)' },
+                    ticks: {
+                        color: '#9ca3af',
+                        font: { family: 'Outfit', size: 9 },
+                        callback: function(value) { return value + ' Mb/s'; }
+                    }
+                }
+            }
+        }
+    });
+
+    // 2. MikroTik Router main chart
+    const ctxMikrotik = document.getElementById('mikrotikChart').getContext('2d');
+    mikrotikChart = new Chart(ctxMikrotik, {
+        type: 'line',
+        data: {
+            labels: Array.from({ length: 20 }, () => ''),
+            datasets: [
                 {
                     label: 'Router RX',
                     data: Array(20).fill(0),
@@ -365,6 +395,7 @@ function initCharts() {
         }
     });
 
+    // 3. Proxmox VE large chart (Network tab)
     const ctxLarge = document.getElementById('largeNetworkChart').getContext('2d');
     largeNetworkChart = new Chart(ctxLarge, {
         type: 'line',
@@ -392,9 +423,36 @@ function initCharts() {
                     tension: 0.35,
                     pointRadius: 2,
                     pointHoverRadius: 5
-                },
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { display: false }, ticks: { display: false } },
+                y: {
+                    grid: { color: 'rgba(255, 255, 255, 0.04)' },
+                    ticks: {
+                        color: '#9ca3af',
+                        font: { family: 'Outfit', size: 10 },
+                        callback: function(value) { return value + ' Mb/s'; }
+                    }
+                }
+            }
+        }
+    });
+
+    // 4. MikroTik Router large chart (MikroTik tab)
+    const ctxMikrotikDetail = document.getElementById('mikrotikDetailChart').getContext('2d');
+    mikrotikDetailChart = new Chart(ctxMikrotikDetail, {
+        type: 'line',
+        data: {
+            labels: Array.from({ length: 20 }, () => ''),
+            datasets: [
                 {
-                    label: 'Router RX',
+                    label: 'WAN RX',
                     data: Array(20).fill(0),
                     borderColor: '#10b981',
                     borderWidth: 2.5,
@@ -405,7 +463,7 @@ function initCharts() {
                     pointHoverRadius: 5
                 },
                 {
-                    label: 'Router TX',
+                    label: 'WAN TX',
                     data: Array(20).fill(0),
                     borderColor: '#ff9966',
                     borderWidth: 2.5,
@@ -441,26 +499,30 @@ function updateCharts(rxHistory, txHistory, mRxHistory, mTxHistory) {
         if (networkChart) {
             networkChart.data.datasets[0].data = rxHistory;
             networkChart.data.datasets[1].data = txHistory;
-            if (mRxHistory && mTxHistory && networkChart.data.datasets[2]) {
-                networkChart.data.datasets[2].data = mRxHistory;
-                networkChart.data.datasets[3].data = mTxHistory;
-            }
             networkChart.update('none');
         }
         if (largeNetworkChart) {
             largeNetworkChart.data.datasets[0].data = rxHistory;
             largeNetworkChart.data.datasets[1].data = txHistory;
-            if (mRxHistory && mTxHistory && largeNetworkChart.data.datasets[2]) {
-                largeNetworkChart.data.datasets[2].data = mRxHistory;
-                largeNetworkChart.data.datasets[3].data = mTxHistory;
-            }
             largeNetworkChart.update('none');
         }
-    } else {
+    }
+    if (mRxHistory && mTxHistory) {
+        if (mikrotikChart) {
+            mikrotikChart.data.datasets[0].data = mRxHistory;
+            mikrotikChart.data.datasets[1].data = mTxHistory;
+            mikrotikChart.update('none');
+        }
+        if (mikrotikDetailChart) {
+            mikrotikDetailChart.data.datasets[0].data = mRxHistory;
+            mikrotikDetailChart.data.datasets[1].data = mTxHistory;
+            mikrotikDetailChart.update('none');
+        }
+    }
+    if (!rxHistory && !txHistory && !mRxHistory && !mTxHistory) {
         const dummyRx = Math.floor(10 + Math.random() * 20);
         const dummyTx = Math.floor(5 + Math.random() * 10);
-        
-        [networkChart, largeNetworkChart].forEach(chart => {
+        [networkChart, largeNetworkChart, mikrotikChart, mikrotikDetailChart].forEach(chart => {
             if (!chart) return;
             chart.data.datasets[0].data.push(dummyRx);
             chart.data.datasets[1].data.push(dummyTx);

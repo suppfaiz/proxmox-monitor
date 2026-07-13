@@ -251,19 +251,31 @@
                     </div>
                 </div>
 
-                <!-- MIDDLE SECTION: NETWORK CHART & ACTIVITY TABS LOG -->
+                <!-- MIDDLE SECTION: PVE NETWORK CHART -->
                 <div class="chart-container-card">
                     <div class="card-header">
-                        <h3>Real-time Network Traffic</h3>
+                        <h3>Real-time Proxmox VE Traffic</h3>
                         <div class="chart-legend">
                             <span class="legend-item rx"><span class="dot teal"></span> PVE RX</span>
                             <span class="legend-item tx"><span class="dot purple"></span> PVE TX</span>
-                            <span class="legend-item m-rx" style="margin-left: 8px;"><span class="dot green" style="background: #10b981;"></span> Router RX</span>
-                            <span class="legend-item m-tx" style="margin-left: 8px;"><span class="dot orange" style="background: #ff9966;"></span> Router TX</span>
                         </div>
                     </div>
                     <div class="card-body-chart">
                         <canvas id="networkChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- MIDDLE SECTION: MIKROTIK NETWORK CHART -->
+                <div class="chart-container-card">
+                    <div class="card-header">
+                        <h3>Real-time MikroTik Router Traffic</h3>
+                        <div class="chart-legend">
+                            <span class="legend-item m-rx"><span class="dot green" style="background: #10b981;"></span> Router RX</span>
+                            <span class="legend-item m-tx" style="margin-left: 8px;"><span class="dot orange" style="background: #ff9966;"></span> Router TX</span>
+                        </div>
+                    </div>
+                    <div class="card-body-chart">
+                        <canvas id="mikrotikChart"></canvas>
                     </div>
                 </div>
 
@@ -594,6 +606,20 @@
                             </div>
                             <p id="mikrotik-disk-pct" style="font-size: 11px; color: var(--text-secondary);">0% terpakai</p>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Router Traffic History Chart -->
+                <div class="vm-list-card" style="grid-column: span 3; width: 100%; margin-bottom: 20px;">
+                    <div class="card-header">
+                        <h3>Real-time Traffic History (WAN)</h3>
+                        <div class="chart-legend" style="display: flex; gap: 16px; font-size: 12px;">
+                            <span class="legend-item m-rx" style="display: flex; align-items: center; gap: 6px;"><span class="dot green" style="background: #10b981; width: 8px; height: 8px; border-radius: 50%; display: inline-block;"></span> WAN RX (Download)</span>
+                            <span class="legend-item m-tx" style="display: flex; align-items: center; gap: 6px;"><span class="dot orange" style="background: #ff9966; width: 8px; height: 8px; border-radius: 50%; display: inline-block;"></span> WAN TX (Upload)</span>
+                        </div>
+                    </div>
+                    <div class="card-body-chart" style="height: 250px; padding: 10px 16px;">
+                        <canvas id="mikrotikDetailChart"></canvas>
                     </div>
                 </div>
 
