@@ -456,8 +456,7 @@ function updateCharts(rxHistory, txHistory, mRxHistory, mTxHistory) {
             }
             largeNetworkChart.update('none');
         }
-    }
-} else {
+    } else {
         const dummyRx = Math.floor(10 + Math.random() * 20);
         const dummyTx = Math.floor(5 + Math.random() * 10);
         
