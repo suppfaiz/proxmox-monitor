@@ -242,8 +242,8 @@ function pollRealMikrotikSNMP() {
     });
 
     try {
-      // 1. Get standard system info
-      const sysOids = [OIDS.sysName, OIDS.sysUpTime, OIDS.sysDescr, OIDS.cpuLoad];
+      // 1. Get standard RFC system identity info
+      const sysOids = [OIDS.sysName, OIDS.sysUpTime, OIDS.sysDescr];
       const sysResults = await new Promise((res, rej) => {
         session.get(sysOids, (err, varbinds) => {
           if (err) rej(err);
@@ -257,7 +257,31 @@ function pollRealMikrotikSNMP() {
       const name = results[OIDS.sysName] ? results[OIDS.sysName].toString() : 'MikroTik';
       const uptime = results[OIDS.sysUpTime] ? Math.floor(parseInt(results[OIDS.sysUpTime]) / 100) : 0;
       const descr = results[OIDS.sysDescr] ? results[OIDS.sysDescr].toString() : '';
-      const cpu = results[OIDS.cpuLoad] ? parseInt(results[OIDS.cpuLoad].toString()) : 0;
+
+      // 2. Query CPU load separately (vendor-specific, can fail)
+      let cpu = 0;
+      try {
+        const cpuResults = await new Promise((res, rej) => {
+          session.get([OIDS.cpuLoad], (err, varbinds) => {
+            if (err) rej(err);
+            else res(varbinds);
+          });
+        });
+        cpu = cpuResults[0] && cpuResults[0].value ? parseInt(cpuResults[0].value.toString()) : 0;
+      } catch (errCpu) {
+        // Fallback to standard Host Resources MIB processor load (core 1)
+        try {
+          const fallbackCpuResults = await new Promise((res, rej) => {
+            session.get(['1.3.6.1.2.1.25.3.3.1.2.1'], (err, varbinds) => {
+              if (err) rej(err);
+              else res(varbinds);
+            });
+          });
+          cpu = fallbackCpuResults[0] && fallbackCpuResults[0].value ? parseInt(fallbackCpuResults[0].value.toString()) : 0;
+        } catch (e2) {
+          cpu = 0;
+        }
+      }
 
       let version = 'RouterOS';
       let model = 'MikroTik Router';
