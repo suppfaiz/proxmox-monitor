@@ -234,97 +234,128 @@ function walkInterfaces(session) {
 }
 
 function pollRealMikrotikSNMP() {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     const session = snmp.createSession(config.mikrotikIp, config.mikrotikCommunity, {
       port: config.mikrotikPort,
       timeout: 1500,
       retries: 1
     });
 
-    const oidsToGet = [
-      OIDS.sysName,
-      OIDS.sysUpTime,
-      OIDS.sysDescr,
-      OIDS.cpuLoad,
-      OIDS.ramAllocUnits,
-      OIDS.ramTotalSize,
-      OIDS.ramUsedSize,
-      OIDS.diskAllocUnits,
-      OIDS.diskTotalSize,
-      OIDS.diskUsedSize
-    ];
-
-    session.get(oidsToGet, async (error, varbinds) => {
-      if (error) {
-        session.close();
-        return reject(error);
-      }
-
-      try {
-        const results = {};
-        for (let i = 0; i < varbinds.length; i++) {
-          results[varbinds[i].oid] = varbinds[i].value;
-        }
-
-        const rawName = results[OIDS.sysName];
-        const name = rawName ? rawName.toString() : 'MikroTik';
-        
-        const rawUptime = results[OIDS.sysUpTime];
-        const uptime = rawUptime ? Math.floor(parseInt(rawUptime) / 100) : 0;
-        
-        const rawDescr = results[OIDS.sysDescr];
-        const descr = rawDescr ? rawDescr.toString() : '';
-        
-        let version = 'RouterOS';
-        let model = 'MikroTik Router';
-        if (descr) {
-          const verMatch = descr.match(/RouterOS\s+([^\s]+)/i);
-          if (verMatch) version = `RouterOS ${verMatch[1]}`;
-          const modelMatch = descr.match(/board\s+([^\s\n\r]+)/i) || descr.match(/(RB[^\s]+|CCR[^\s]+|CRS[^\s]+|hap[^\s]+)/i);
-          if (modelMatch) model = modelMatch[1];
-        }
-
-        const cpu = results[OIDS.cpuLoad] ? parseInt(results[OIDS.cpuLoad].toString()) : 0;
-        
-        const ramAlloc = results[OIDS.ramAllocUnits] ? parseInt(results[OIDS.ramAllocUnits].toString()) : 1;
-        const ramTotal = results[OIDS.ramTotalSize] ? parseInt(results[OIDS.ramTotalSize].toString()) * ramAlloc : 0;
-        const ramUsed = results[OIDS.ramUsedSize] ? parseInt(results[OIDS.ramUsedSize].toString()) * ramAlloc : 0;
-
-        const diskAlloc = results[OIDS.diskAllocUnits] ? parseInt(results[OIDS.diskAllocUnits].toString()) : 1;
-        const diskTotal = results[OIDS.diskTotalSize] ? parseInt(results[OIDS.diskTotalSize].toString()) * diskAlloc : 0;
-        const diskUsed = results[OIDS.diskUsedSize] ? parseInt(results[OIDS.diskUsedSize].toString()) * diskAlloc : 0;
-
-        const interfaces = await walkInterfaces(session);
-        session.close();
-        
-        let wanInterface = interfaces.find(iface => iface.name.toLowerCase().includes('wan') || iface.name.toLowerCase().includes('ether1'));
-        if (!wanInterface) wanInterface = interfaces[0];
-
-        const rxRate = wanInterface ? wanInterface.rxRate : 0;
-        const txRate = wanInterface ? wanInterface.txRate : 0;
-
-        const wanRxMbps = Math.round((rxRate * 8) / (1024 * 1024));
-        const wanTxMbps = Math.round((txRate * 8) / (1024 * 1024));
-        
-        cachedMikrotikRxHistory.push(wanRxMbps);
-        cachedMikrotikTxHistory.push(wanTxMbps);
-        if (cachedMikrotikRxHistory.length > 20) {
-          cachedMikrotikRxHistory.shift();
-          cachedMikrotikTxHistory.shift();
-        }
-
-        resolve({
-          online: true,
-          identity: { name, uptime, model, version },
-          resources: { cpu, ramUsed, ramTotal, diskUsed, diskTotal },
-          interfaces,
-          network: { rx: rxRate, tx: txRate }
+    try {
+      // 1. Get standard system info
+      const sysOids = [OIDS.sysName, OIDS.sysUpTime, OIDS.sysDescr, OIDS.cpuLoad];
+      const sysResults = await new Promise((res, rej) => {
+        session.get(sysOids, (err, varbinds) => {
+          if (err) rej(err);
+          else res(varbinds);
         });
-      } catch (err) {
-        session.close();
-        reject(err);
+      });
+
+      const results = {};
+      sysResults.forEach(vb => { results[vb.oid] = vb.value; });
+
+      const name = results[OIDS.sysName] ? results[OIDS.sysName].toString() : 'MikroTik';
+      const uptime = results[OIDS.sysUpTime] ? Math.floor(parseInt(results[OIDS.sysUpTime]) / 100) : 0;
+      const descr = results[OIDS.sysDescr] ? results[OIDS.sysDescr].toString() : '';
+      const cpu = results[OIDS.cpuLoad] ? parseInt(results[OIDS.cpuLoad].toString()) : 0;
+
+      let version = 'RouterOS';
+      let model = 'MikroTik Router';
+      if (descr) {
+        const verMatch = descr.match(/RouterOS\s+([^\s]+)/i);
+        if (verMatch) version = `RouterOS ${verMatch[1]}`;
+        const modelMatch = descr.match(/board\s+([^\s\n\r]+)/i) || descr.match(/(RB[^\s]+|CCR[^\s]+|CRS[^\s]+|hap[^\s]+)/i);
+        if (modelMatch) model = modelMatch[1];
       }
-    });
+
+      // 2. Try to get RAM and Disk metrics
+      let ramTotal = 0, ramUsed = 0, diskTotal = 0, diskUsed = 0;
+      try {
+        const storageOids = [
+          OIDS.ramAllocUnits, OIDS.ramTotalSize, OIDS.ramUsedSize,
+          OIDS.diskAllocUnits, OIDS.diskTotalSize, OIDS.diskUsedSize
+        ];
+        const storageResults = await new Promise((res, rej) => {
+          session.get(storageOids, (err, varbinds) => {
+            if (err) rej(err);
+            else res(varbinds);
+          });
+        });
+        const stRes = {};
+        storageResults.forEach(vb => { stRes[vb.oid] = vb.value; });
+
+        const ramAlloc = stRes[OIDS.ramAllocUnits] ? parseInt(stRes[OIDS.ramAllocUnits].toString()) : 1;
+        ramTotal = stRes[OIDS.ramTotalSize] ? parseInt(stRes[OIDS.ramTotalSize].toString()) * ramAlloc : 0;
+        ramUsed = stRes[OIDS.ramUsedSize] ? parseInt(stRes[OIDS.ramUsedSize].toString()) * ramAlloc : 0;
+
+        const diskAlloc = stRes[OIDS.diskAllocUnits] ? parseInt(stRes[OIDS.diskAllocUnits].toString()) : 1;
+        diskTotal = stRes[OIDS.diskTotalSize] ? parseInt(stRes[OIDS.diskTotalSize].toString()) * diskAlloc : 0;
+        diskUsed = stRes[OIDS.diskUsedSize] ? parseInt(stRes[OIDS.diskUsedSize].toString()) * diskAlloc : 0;
+      } catch (errStorage) {
+        // Fallback to standard index 1 (RAM) and index 2 (Disk) on some models
+        try {
+          const fallbackOids = [
+            '1.3.6.1.2.1.25.2.3.1.4.1', '1.3.6.1.2.1.25.2.3.1.5.1', '1.3.6.1.2.1.25.2.3.1.6.1',
+            '1.3.6.1.2.1.25.2.3.1.4.2', '1.3.6.1.2.1.25.2.3.1.5.2', '1.3.6.1.2.1.25.2.3.1.6.2'
+          ];
+          const fallbackResults = await new Promise((res, rej) => {
+            session.get(fallbackOids, (err, varbinds) => {
+              if (err) rej(err);
+              else res(varbinds);
+            });
+          });
+          const fbRes = {};
+          fallbackResults.forEach(vb => { fbRes[vb.oid] = vb.value; });
+          
+          const rAlloc = fbRes['1.3.6.1.2.1.25.2.3.1.4.1'] ? parseInt(fbRes['1.3.6.1.2.1.25.2.3.1.4.1'].toString()) : 1;
+          ramTotal = fbRes['1.3.6.1.2.1.25.2.3.1.5.1'] ? parseInt(fbRes['1.3.6.1.2.1.25.2.3.1.5.1'].toString()) * rAlloc : 0;
+          ramUsed = fbRes['1.3.6.1.2.1.25.2.3.1.6.1'] ? parseInt(fbRes['1.3.6.1.2.1.25.2.3.1.6.1'].toString()) * rAlloc : 0;
+
+          const dAlloc = fbRes['1.3.6.1.2.1.25.2.3.1.4.2'] ? parseInt(fbRes['1.3.6.1.2.1.25.2.3.1.4.2'].toString()) : 1;
+          diskTotal = fbRes['1.3.6.1.2.1.25.2.3.1.5.2'] ? parseInt(fbRes['1.3.6.1.2.1.25.2.3.1.5.2'].toString()) * dAlloc : 0;
+          diskUsed = fbRes['1.3.6.1.2.1.25.2.3.1.6.2'] ? parseInt(fbRes['1.3.6.1.2.1.25.2.3.1.6.2'].toString()) * dAlloc : 0;
+        } catch (e2) {
+          // Defaults remain 0
+        }
+      }
+
+      // 3. Walk Interfaces
+      let interfaces = [];
+      try {
+        interfaces = await walkInterfaces(session);
+      } catch (errIface) {
+        console.warn('Interfaces SNMP walk failed:', errIface.message);
+      }
+
+      session.close();
+
+      let wanInterface = interfaces.find(iface => iface.name.toLowerCase().includes('wan') || iface.name.toLowerCase().includes('ether1'));
+      if (!wanInterface) wanInterface = interfaces[0];
+
+      const rxRate = wanInterface ? wanInterface.rxRate : 0;
+      const txRate = wanInterface ? wanInterface.txRate : 0;
+
+      const wanRxMbps = Math.round((rxRate * 8) / (1024 * 1024));
+      const wanTxMbps = Math.round((txRate * 8) / (1024 * 1024));
+      
+      cachedMikrotikRxHistory.push(wanRxMbps);
+      cachedMikrotikTxHistory.push(wanTxMbps);
+      if (cachedMikrotikRxHistory.length > 20) {
+        cachedMikrotikRxHistory.shift();
+        cachedMikrotikTxHistory.shift();
+      }
+
+      resolve({
+        online: true,
+        identity: { name, uptime, model, version },
+        resources: { cpu, ramUsed, ramTotal, diskUsed, diskTotal },
+        interfaces,
+        network: { rx: rxRate, tx: txRate }
+      });
+    } catch (err) {
+      session.close();
+      reject(err);
+    }
   });
 }
 
