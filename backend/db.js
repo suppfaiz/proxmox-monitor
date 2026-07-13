@@ -117,6 +117,17 @@ const initDatabase = async () => {
       console.log('Default users seeded successfully:');
       console.log(' - Admin: admin / admin123');
       console.log(' - Staff: staff / staff123');
+    } else {
+      // Auto-heal plain text passwords from legacy sessions if any exist
+      const users = await query('SELECT * FROM users');
+      for (let u of users) {
+        if (u.password && !u.password.startsWith('$2a$') && !u.password.startsWith('$2b$')) {
+          console.log(`Auto-healing/Hashing plain text password for user: ${u.username}`);
+          const salt = bcrypt.genSaltSync(12);
+          const hash = bcrypt.hashSync(u.password, salt);
+          await run('UPDATE users SET password = ? WHERE id = ?', [hash, u.id]);
+        }
+      }
     }
 
     // Seed default switches if switches table is empty (migrating from initial seed)
