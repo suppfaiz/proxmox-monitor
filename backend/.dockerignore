@@ -1,5 +1,9 @@
-node_modules
-data
-*.sqlite
-switches.json
-network_sla.json
+/vendor
+/node_modules
+/storage/framework/cache/data/*
+/storage/framework/sessions/*
+/storage/framework/testing/*
+/storage/framework/views/*
+/storage/logs/*
+.env
+database/*.sqlite
