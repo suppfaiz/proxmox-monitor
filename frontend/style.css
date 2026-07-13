@@ -1340,3 +1340,37 @@ body {
     color: #ffffff;
     border-color: #111827;
 }
+
+/* ================================
+   ROLE-BASED ACCESS CONTROL (RBAC)
+================================ */
+body.role-staff .staff-hide {
+    display: none !important;
+}
+
+body.role-staff .staff-disable {
+    pointer-events: none !important;
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+}
+
+/* ================================
+   USER & AUDIT LOGS STYLING
+================================ */
+#add-user-form select {
+    outline: none;
+    background: #ffffff !important;
+    border: 1px solid var(--border-strong) !important;
+    color: #111827 !important;
+    border-radius: 7px !important;
+    padding: 9px 13px;
+    font-size: 14px;
+    font-family: inherit;
+    width: 100%;
+    transition: var(--transition-smooth);
+}
+
+#add-user-form select:focus {
+    border-color: #111827 !important;
+    box-shadow: 0 0 0 3px rgba(17,24,39,0.06) !important;
+}

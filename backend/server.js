@@ -21,10 +21,24 @@ if (process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0') {
   });
 }
 
-// Generate secure session token dynamically on boot
-const crypto = require('crypto');
-const sessionToken = crypto.randomBytes(32).toString('hex');
-console.log(`Generated Cryptographic Session Token: ${sessionToken}`);
+// Database connection and bcrypt hashing for ISO audit compliance
+const db = require('./db');
+const bcrypt = require('bcryptjs');
+const activeSessions = {};
+
+// Operation auditing logger helper capturing timestamp, user, action target, status, details, and Request IP
+const logOperation = async (req, username, action, target, status, message) => {
+  try {
+    const ip = req ? (req.headers['x-forwarded-for'] || req.socket.remoteAddress) : 'system';
+    const timestamp = new Date().toISOString();
+    await db.run(
+      'INSERT INTO audit_logs (timestamp, username, ip_address, action, target, status, message) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [timestamp, username || 'system', ip, action, target, status, message]
+    );
+  } catch (e) {
+    console.error('Failed to log operation:', e);
+  }
+};
 
 // Middleware to authenticate Bearer tokens for API endpoints
 const authenticateToken = (req, res, next) => {
@@ -40,10 +54,18 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ error: 'Unauthorized: Harap login terlebih dahulu.' });
   }
   
-  if (token !== sessionToken) {
+  if (!activeSessions[token]) {
     return res.status(401).json({ error: 'Unauthorized: Sesi tidak valid atau telah kedaluwarsa.' });
   }
   
+  req.user = activeSessions[token];
+  next();
+};
+
+const requireAdmin = (req, res, next) => {
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Hak akses administrator diperlukan.' });
+  }
   next();
 };
 
@@ -553,21 +575,38 @@ app.get('/api/status', (req, res) => {
 });
 
 // Auth Login API
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
-  
-  if (username === config.dashboardUsername && password === config.dashboardPassword) {
+  try {
+    const user = await db.get('SELECT * FROM users WHERE username = ?', [username]);
+    if (!user) {
+      await logOperation(req, username, 'login', 'portal', 'failure', 'User not found');
+      return res.status(401).json({ success: false, error: 'Username atau password salah!' });
+    }
+    
+    const isMatch = bcrypt.compareSync(password, user.password);
+    if (!isMatch) {
+      await logOperation(req, username, 'login', 'portal', 'failure', 'Invalid password');
+      return res.status(401).json({ success: false, error: 'Username atau password salah!' });
+    }
+    
+    const crypto = require('crypto');
+    const token = crypto.randomBytes(32).toString('hex');
+    activeSessions[token] = { username: user.username, role: user.role };
+    
+    await logOperation(req, user.username, 'login', 'portal', 'success', 'User logged in successfully');
+    
     return res.json({
       success: true,
-      token: sessionToken,
+      token,
+      role: user.role,
+      username: user.username,
       message: 'Login sukses! Membuka dashboard...'
     });
+  } catch (err) {
+    console.error('Login error:', err);
+    return res.status(500).json({ success: false, error: 'Terjadi kesalahan sistem' });
   }
-  
-  return res.status(401).json({
-    success: false,
-    error: 'Username atau password salah!'
-  });
 });
 
 // Get Active Settings configuration
@@ -584,7 +623,7 @@ app.get('/api/settings', (req, res) => {
 });
 
 // Update Settings dynamically from the frontend
-app.post('/api/settings', async (req, res) => {
+app.post('/api/settings', requireAdmin, async (req, res) => {
   const { demoMode, apiUrl, tokenId, tokenSecret, mikrotikIp, mikrotikCommunity, mikrotikPort } = req.body;
   const originalConfig = { ...config };
 
@@ -606,6 +645,7 @@ app.post('/api/settings', async (req, res) => {
       await proxmoxRequest('GET', '/version');
     } catch (e) {
       config = originalConfig;
+      await logOperation(req, req.user.username, 'update_settings', 'config', 'failure', `Failed to connect to Proxmox VE: ${e.message}`);
       return res.status(400).json({ 
         success: false, 
         error: 'Koneksi ke Proxmox gagal! Harap periksa URL API dan Token Anda.', 
@@ -616,14 +656,16 @@ app.post('/api/settings', async (req, res) => {
 
   try {
     saveEnvConfig(config);
+    await logOperation(req, req.user.username, 'update_settings', 'config', 'success', `Updated config (demoMode=${config.demoMode}, Proxmox API=${config.apiUrl})`);
     res.json({ 
       success: true, 
       message: config.demoMode 
-        ? 'Pengaturan disimpan. Server sekarang berada dalam DEMO MODE.' 
-        : 'Pengaturan disimpan. Sukses terhubung ke server Proxmox VE!' 
+        ? 'Settings saved. Server is now in DEMO MODE.' 
+        : 'Settings saved. Successfully connected to Proxmox VE server!' 
     });
   } catch (e) {
-    res.status(500).json({ success: false, error: 'Gagal menulis file konfigurasi (.env)', details: e.message });
+    await logOperation(req, req.user.username, 'update_settings', 'config', 'failure', `Failed to write .env config: ${e.message}`);
+    res.status(500).json({ success: false, error: 'Failed to write config file (.env)', details: e.message });
   }
 });
 
@@ -853,17 +895,19 @@ app.get('/api/tasks', async (req, res) => {
 });
 
 // Control VM (Start/Stop/Reboot)
-app.post('/api/vm/:node/:vmid/status/:action', async (req, res) => {
+app.post('/api/vm/:node/:vmid/status/:action', requireAdmin, async (req, res) => {
   const { node, vmid, action } = req.params;
   const validActions = ['start', 'stop', 'shutdown', 'reboot'];
 
   if (!validActions.includes(action)) {
+    await logOperation(req, req.user.username, `vm_${action}`, `${node}/${vmid}`, 'failure', `Invalid VM action: ${action}`);
     return res.status(400).json({ error: 'Invalid action. Must be start, stop, shutdown, or reboot' });
   }
 
   if (config.demoMode) {
     const vmIndex = demoVms.findIndex(v => v.vmid === parseInt(vmid));
     if (vmIndex === -1) {
+      await logOperation(req, req.user.username, `vm_${action}`, `${node}/${vmid}`, 'failure', 'VM not found');
       return res.status(404).json({ error: 'VM not found' });
     }
 
@@ -880,6 +924,7 @@ app.post('/api/vm/:node/:vmid/status/:action', async (req, res) => {
       demoVms[vmIndex].uptime = 5;
     }
 
+    await logOperation(req, req.user.username, `vm_${action}`, `${node}/${vmid}`, 'success', `[DEMO] Triggered VM action successfully`);
     return res.json({ success: true, message: `[DEMO] VM ${vmid} action '${action}' triggered successfully.` });
   }
 
@@ -888,6 +933,7 @@ app.post('/api/vm/:node/:vmid/status/:action', async (req, res) => {
     const targetResource = resourcesResponse.data.find(r => r.vmid === parseInt(vmid));
 
     if (!targetResource) {
+      await logOperation(req, req.user.username, `vm_${action}`, `${node}/${vmid}`, 'failure', 'VM not found');
       return res.status(404).json({ error: `VM/CT with ID ${vmid} not found on node ${node}` });
     }
 
@@ -895,82 +941,86 @@ app.post('/api/vm/:node/:vmid/status/:action', async (req, res) => {
     const path = `/nodes/${node}/${type}/${vmid}/status/${action}`;
     const result = await proxmoxRequest('POST', path);
 
+    await logOperation(req, req.user.username, `vm_${action}`, `${node}/${vmid}`, 'success', `Triggered VM action ${action}`);
     res.json({ success: true, details: result.data });
   } catch (error) {
+    await logOperation(req, req.user.username, `vm_${action}`, `${node}/${vmid}`, 'failure', `Failed: ${error.message}`);
     res.status(500).json({ error: `Failed to trigger action '${action}' on VM ${vmid}`, details: error.message });
   }
 });
 
 // Control Node (Reboot/Shutdown Host)
-app.post('/api/node/:node/status/:action', async (req, res) => {
+app.post('/api/node/:node/status/:action', requireAdmin, async (req, res) => {
   const { node, action } = req.params;
   const validActions = ['reboot', 'shutdown'];
 
   if (!validActions.includes(action)) {
+    await logOperation(req, req.user.username, `node_${action}`, node, 'failure', `Invalid action: ${action}`);
     return res.status(400).json({ error: 'Invalid action. Must be reboot or shutdown' });
   }
 
   if (config.demoMode) {
+    await logOperation(req, req.user.username, `node_${action}`, node, 'success', `[DEMO] Triggered host ${action} (Simulated)`);
     return res.json({ success: true, message: `Node ${node} is performing ${action} (Simulated)` });
   }
 
   try {
     const response = await proxmoxRequest('POST', `/nodes/${node}/status`, { command: action });
+    await logOperation(req, req.user.username, `node_${action}`, node, 'success', `Sent host ${action} command`);
     res.json({ success: true, message: `Node ${node} ${action} command sent successfully.`, details: response.data });
   } catch (error) {
+    await logOperation(req, req.user.username, `node_${action}`, node, 'failure', `Failed: ${error.message}`);
     res.status(500).json({ error: `Failed to execute node command ${action}`, details: error.message });
   }
 });
 
 // --- SWITCHES & PING NETWORK STATUS CONNECTIONS ---
 const { exec } = require('child_process');
-const switchesPath = path.join(__dirname, 'switches.json');
-const networkSlaPath = path.join(__dirname, 'network_sla.json');
 
-let switchesList = [];
-let networkSlaLogs = [];
-
-// Initialize switches.json if it doesn't exist
-try {
-  if (fs.existsSync(switchesPath)) {
-    switchesList = JSON.parse(fs.readFileSync(switchesPath, 'utf8'));
-  } else {
-    switchesList = [
-      { id: "sw-1", name: "Core Switch 01", ip: "192.168.200.2", status: "online", latency: 1, lastDown: null, lastUp: null },
-      { id: "sw-2", name: "Access Switch 01", ip: "192.168.200.3", status: "online", latency: 2, lastDown: null, lastUp: null }
-    ];
-    fs.writeFileSync(switchesPath, JSON.stringify(switchesList, null, 2), 'utf8');
-  }
-} catch (e) {
-  console.error("Failed to load switches:", e);
-}
-
-// Initialize network_sla.json if it doesn't exist
-try {
-  if (fs.existsSync(networkSlaPath)) {
-    networkSlaLogs = JSON.parse(fs.readFileSync(networkSlaPath, 'utf8'));
-  } else {
-    networkSlaLogs = [];
-    fs.writeFileSync(networkSlaPath, JSON.stringify(networkSlaLogs, null, 2), 'utf8');
-  }
-} catch (e) {
-  console.error("Failed to load network SLA logs:", e);
-}
-
-const saveSwitches = () => {
+const updateSwitchStatusInDb = async (device, isOnline, latency) => {
   try {
-    fs.writeFileSync(switchesPath, JSON.stringify(switchesList, null, 2), 'utf8');
-  } catch (e) {
-    console.error("Failed to save switches:", e);
-  }
-};
+    const prevStatus = device.status;
+    const newStatus = isOnline ? 'online' : 'offline';
+    
+    let lastDown = device.lastDown;
+    let lastUp = device.lastUp;
+    const nowStr = new Date().toLocaleTimeString() + ' ' + new Date().toLocaleDateString();
 
-const saveSlaLogs = () => {
-  try {
-    if (networkSlaLogs.length > 100) networkSlaLogs = networkSlaLogs.slice(0, 100);
-    fs.writeFileSync(networkSlaPath, JSON.stringify(networkSlaLogs, null, 2), 'utf8');
-  } catch (e) {
-    console.error("Failed to save SLA logs:", e);
+    if (newStatus === 'offline' && (prevStatus === 'online' || prevStatus === undefined)) {
+      lastDown = new Date().toISOString();
+      const alertMsg = `SLA BREACH: Switch ${device.name} (${device.ip}) is Offline!`;
+      const logId = 'log-' + Math.random().toString(36).substring(2, 9);
+      await db.run(
+        'INSERT INTO network_sla (id, type, deviceName, deviceIp, timestamp, formattedTime, lastDown, duration, message) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [logId, 'down', device.name, device.ip, new Date().toISOString(), nowStr, lastDown, '', alertMsg]
+      );
+      await logOperation(null, 'system', 'sla_breach', device.name, 'success', alertMsg);
+      console.log(alertMsg);
+    } else if (newStatus === 'online' && prevStatus === 'offline') {
+      lastUp = new Date().toISOString();
+      const downTime = device.lastDown ? new Date(device.lastDown) : null;
+      let durationStr = 'Unknown';
+      if (downTime) {
+        const durationSec = Math.round((new Date() - downTime) / 1000);
+        durationStr = `${durationSec}s`;
+      }
+      const alertMsg = `SLA RESTORED: Switch ${device.name} (${device.ip}) is Online! Downtime: ${durationStr}`;
+      const logId = 'log-' + Math.random().toString(36).substring(2, 9);
+      await db.run(
+        'INSERT INTO network_sla (id, type, deviceName, deviceIp, timestamp, formattedTime, lastDown, duration, message) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [logId, 'up', device.name, device.ip, new Date().toISOString(), nowStr, device.lastDown, durationStr, alertMsg]
+      );
+      await logOperation(null, 'system', 'sla_restore', device.name, 'success', alertMsg);
+      console.log(alertMsg);
+      lastDown = null;
+    }
+
+    await db.run(
+      'UPDATE switches SET status = ?, latency = ?, lastDown = ?, lastUp = ? WHERE id = ?',
+      [newStatus, latency, lastDown, lastUp, device.id]
+    );
+  } catch (err) {
+    console.error('Failed to update switch status:', err);
   }
 };
 
@@ -992,182 +1042,192 @@ function pingDevice(device) {
         latency = 1;
       }
     }
-
-    const prevStatus = device.status;
-    const newStatus = isOnline ? 'online' : 'offline';
-    device.status = newStatus;
-    device.latency = isOnline ? latency : 0;
-
-    const nowStr = new Date().toLocaleTimeString() + ' ' + new Date().toLocaleDateString();
-
-    if (newStatus === 'offline' && (prevStatus === 'online' || prevStatus === undefined)) {
-      device.lastDown = new Date().toISOString();
-      const alertMsg = `SLA BREACH: Switch ${device.name} (${device.ip}) is Offline!`;
-      const logEntry = {
-        id: Math.random().toString(36).substring(2, 9),
-        type: 'down',
-        deviceName: device.name,
-        deviceIp: device.ip,
-        timestamp: new Date().toISOString(),
-        formattedTime: nowStr,
-        message: alertMsg
-      };
-      networkSlaLogs.unshift(logEntry);
-      saveSlaLogs();
-      console.log(alertMsg);
-    } else if (newStatus === 'online' && prevStatus === 'offline') {
-      device.lastUp = new Date().toISOString();
-      const downTime = device.lastDown ? new Date(device.lastDown) : null;
-      let durationStr = 'Unknown';
-      if (downTime) {
-        const durationSec = Math.round((new Date() - downTime) / 1000);
-        durationStr = `${durationSec}s`;
-      }
-      const alertMsg = `SLA RESTORED: Switch ${device.name} (${device.ip}) is Online! Downtime: ${durationStr}`;
-      const logEntry = {
-        id: Math.random().toString(36).substring(2, 9),
-        type: 'up',
-        deviceName: device.name,
-        deviceIp: device.ip,
-        timestamp: new Date().toISOString(),
-        formattedTime: nowStr,
-        lastDown: device.lastDown,
-        duration: durationStr,
-        message: alertMsg
-      };
-      networkSlaLogs.unshift(logEntry);
-      saveSlaLogs();
-      console.log(alertMsg);
-      device.lastDown = null;
-    }
+    updateSwitchStatusInDb(device, isOnline, latency);
   });
 }
 
 // Switch Pinger Loop (Runs every 1 second)
-setInterval(() => {
-  switchesList.forEach(device => {
-    if (config.demoMode) {
-      if (!device.demoOfflineTimer) device.demoOfflineTimer = 0;
-      if (!device.isOfflineDemo) device.isOfflineDemo = false;
+setInterval(async () => {
+  try {
+    const switches = await db.query('SELECT * FROM switches');
+    switches.forEach(device => {
+      if (config.demoMode) {
+        if (!device.demoOfflineTimer) device.demoOfflineTimer = 0;
+        if (!device.isOfflineDemo) device.isOfflineDemo = false;
 
-      // 1.5% chance to start offline simulation of 5-15 seconds
-      if (!device.isOfflineDemo && Math.random() < 0.015) {
-        device.isOfflineDemo = true;
-        device.demoOfflineTimer = Math.floor(5 + Math.random() * 10);
-      }
-
-      let isOnline = true;
-      if (device.isOfflineDemo) {
-        if (device.demoOfflineTimer > 0) {
-          device.demoOfflineTimer--;
-          isOnline = false;
-        } else {
-          device.isOfflineDemo = false;
-          isOnline = true;
+        // 1.5% chance to start offline simulation of 5-15 seconds
+        if (!device.isOfflineDemo && Math.random() < 0.015) {
+          device.isOfflineDemo = true;
+          device.demoOfflineTimer = Math.floor(5 + Math.random() * 10);
         }
-      }
 
-      const latency = isOnline ? Math.floor(1 + Math.random() * 5) : 0;
-      const prevStatus = device.status;
-      const newStatus = isOnline ? 'online' : 'offline';
-      device.status = newStatus;
-      device.latency = latency;
-
-      const nowStr = new Date().toLocaleTimeString() + ' ' + new Date().toLocaleDateString();
-
-      if (newStatus === 'offline' && (prevStatus === 'online' || prevStatus === undefined)) {
-        device.lastDown = new Date().toISOString();
-        const alertMsg = `SLA BREACH: Switch ${device.name} (${device.ip}) is Offline!`;
-        const logEntry = {
-          id: Math.random().toString(36).substring(2, 9),
-          type: 'down',
-          deviceName: device.name,
-          deviceIp: device.ip,
-          timestamp: new Date().toISOString(),
-          formattedTime: nowStr,
-          message: alertMsg
-        };
-        networkSlaLogs.unshift(logEntry);
-        saveSlaLogs();
-        console.log(alertMsg);
-      } else if (newStatus === 'online' && prevStatus === 'offline') {
-        device.lastUp = new Date().toISOString();
-        const downTime = device.lastDown ? new Date(device.lastDown) : null;
-        let durationStr = 'Unknown';
-        if (downTime) {
-          const durationSec = Math.round((new Date() - downTime) / 1000);
-          durationStr = `${durationSec}s`;
+        let isOnline = true;
+        if (device.isOfflineDemo) {
+          if (device.demoOfflineTimer > 0) {
+            device.demoOfflineTimer--;
+            isOnline = false;
+          } else {
+            device.isOfflineDemo = false;
+            isOnline = true;
+          }
         }
-        const alertMsg = `SLA RESTORED: Switch ${device.name} (${device.ip}) is Online! Downtime: ${durationStr}`;
-        const logEntry = {
-          id: Math.random().toString(36).substring(2, 9),
-          type: 'up',
-          deviceName: device.name,
-          deviceIp: device.ip,
-          timestamp: new Date().toISOString(),
-          formattedTime: nowStr,
-          lastDown: device.lastDown,
-          duration: durationStr,
-          message: alertMsg
-        };
-        networkSlaLogs.unshift(logEntry);
-        saveSlaLogs();
-        console.log(alertMsg);
-        device.lastDown = null;
+
+        const latency = isOnline ? Math.floor(1 + Math.random() * 5) : 0;
+        updateSwitchStatusInDb(device, isOnline, latency);
+      } else {
+        pingDevice(device);
       }
-    } else {
-      pingDevice(device);
-    }
-  });
+    });
+  } catch (err) {
+    console.error('Error in pinger loop:', err);
+  }
 }, 1000);
 
 // API Endpoint: Get configured switches
-app.get('/api/switches', authenticateToken, (req, res) => {
-  res.json(switchesList);
+app.get('/api/switches', authenticateToken, async (req, res) => {
+  try {
+    const switches = await db.query('SELECT * FROM switches');
+    res.json(switches);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch switches' });
+  }
 });
 
-// API Endpoint: Add a new switch
-app.post('/api/switches', authenticateToken, (req, res) => {
+// API Endpoint: Add a new switch (Admin only)
+app.post('/api/switches', authenticateToken, requireAdmin, async (req, res) => {
   const { name, ip } = req.body;
   if (!name || !ip) {
     return res.status(400).json({ error: 'Name and IP are required fields' });
   }
-  const newDevice = {
-    id: 'sw-' + Math.random().toString(36).substring(2, 9),
-    name,
-    ip,
-    status: 'online',
-    latency: 1,
-    lastDown: null,
-    lastUp: null
-  };
-  switchesList.push(newDevice);
-  saveSwitches();
-  res.json(newDevice);
+  const ipRegex = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
+  if (!ipRegex.test(ip)) {
+    return res.status(400).json({ error: 'Format IP Address tidak valid' });
+  }
+  try {
+    const id = 'sw-' + Math.random().toString(36).substring(2, 9);
+    await db.run('INSERT INTO switches (id, name, ip, status, latency) VALUES (?, ?, ?, ?, ?)', [id, name, ip, 'online', 1]);
+    await logOperation(req, req.user.username, 'add_switch', name, 'success', `Added switch ${name} (${ip})`);
+    res.json({ id, name, ip, status: 'online', latency: 1 });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to add switch', details: err.message });
+  }
 });
 
-// API Endpoint: Delete a switch
-app.delete('/api/switches/:id', authenticateToken, (req, res) => {
+// API Endpoint: Delete a switch (Admin only)
+app.delete('/api/switches/:id', authenticateToken, requireAdmin, async (req, res) => {
   const { id } = req.params;
-  const index = switchesList.findIndex(d => d.id === id);
-  if (index === -1) {
-    return res.status(404).json({ error: 'Device not found' });
+  try {
+    const device = await db.get('SELECT * FROM switches WHERE id = ?', [id]);
+    if (!device) {
+      return res.status(404).json({ error: 'Device not found' });
+    }
+    await db.run('DELETE FROM switches WHERE id = ?', [id]);
+    await logOperation(req, req.user.username, 'delete_switch', device.name, 'success', `Deleted switch ${device.name}`);
+    res.json({ success: true, message: 'Device deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete switch', details: err.message });
   }
-  switchesList.splice(index, 1);
-  saveSwitches();
-  res.json({ success: true, message: 'Device deleted successfully' });
 });
 
 // API Endpoint: Get switch SLA logs
-app.get('/api/switches/sla', authenticateToken, (req, res) => {
-  res.json(networkSlaLogs);
+app.get('/api/switches/sla', authenticateToken, async (req, res) => {
+  try {
+    const logs = await db.query('SELECT * FROM network_sla ORDER BY timestamp DESC LIMIT 100');
+    res.json(logs);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch SLA logs' });
+  }
 });
 
-// API Endpoint: Clear SLA logs
-app.post('/api/switches/sla/clear', authenticateToken, (req, res) => {
-  networkSlaLogs = [];
-  saveSlaLogs();
-  res.json({ success: true });
+// API Endpoint: Clear SLA logs (Admin only)
+app.post('/api/switches/sla/clear', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    await db.run('DELETE FROM network_sla');
+    await logOperation(req, req.user.username, 'clear_sla_logs', 'switches', 'success', 'Cleared switch SLA event logs');
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to clear SLA logs' });
+  }
+});
+
+// --- USER CRUD OPERATIONS (ADMIN ONLY) ---
+
+app.get('/api/users', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const users = await db.query('SELECT id, username, role FROM users');
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch users list' });
+  }
+});
+
+app.post('/api/users', authenticateToken, requireAdmin, async (req, res) => {
+  const { username, password, role } = req.body;
+  if (!username || !password || !role) {
+    return res.status(400).json({ error: 'Username, password, and role are required' });
+  }
+  if (role !== 'admin' && role !== 'staff') {
+    return res.status(400).json({ error: 'Invalid role' });
+  }
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+  }
+  const usernameRegex = /^[a-zA-Z0-9_]{3,30}$/;
+  if (!usernameRegex.test(username)) {
+    return res.status(400).json({ error: 'Username must be alphanumeric and between 3 and 30 characters' });
+  }
+  try {
+    const exists = await db.get('SELECT * FROM users WHERE username = ?', [username]);
+    if (exists) {
+      return res.status(400).json({ error: 'Username already exists' });
+    }
+    const salt = bcrypt.genSaltSync(12);
+    const hash = bcrypt.hashSync(password, salt);
+    await db.run('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', [username, hash, role]);
+    await logOperation(req, req.user.username, 'create_user', username, 'success', `Created user ${username} with role ${role}`);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create user', details: err.message });
+  }
+});
+
+app.delete('/api/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const user = await db.get('SELECT * FROM users WHERE id = ?', [id]);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (user.username === 'admin') {
+      return res.status(400).json({ error: 'Cannot delete default admin user' });
+    }
+    await db.run('DELETE FROM users WHERE id = ?', [id]);
+    await logOperation(req, req.user.username, 'delete_user', user.username, 'success', `Deleted user ${user.username}`);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete user', details: err.message });
+  }
+});
+
+// --- AUDIT HISTORY LOGS (ADMIN ONLY) ---
+
+app.get('/api/audit-logs', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const logs = await db.query('SELECT * FROM audit_logs ORDER BY id DESC LIMIT 200');
+    res.json(logs);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch audit logs' });
+  }
+});
+
+app.post('/api/audit-logs/clear', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    await db.run('DELETE FROM audit_logs');
+    await logOperation(req, req.user.username, 'clear_audit_logs', 'all', 'success', 'Cleared audit logs database');
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to clear audit logs' });
+  }
 });
 
 // Start Server

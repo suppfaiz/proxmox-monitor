@@ -60,6 +60,9 @@
                 <div class="logo-text">
                     <h2>JNOC</h2>
                     <p id="cluster-name">CloudOps Cluster</p>
+                    <div id="user-profile-badge" style="font-size: 10px; color: var(--text-secondary); margin-top: 4px; display: flex; align-items: center; gap: 4px;">
+                        <i class="fa-solid fa-user"></i> <span id="user-display-name">Loading...</span>
+                    </div>
                 </div>
             </div>
 
@@ -74,6 +77,8 @@
                     <li data-target="switches"><a href="#switches"><i class="fa-solid fa-circle-nodes"></i> <span>Switches (SLA)</span></a></li>
                     <li data-target="mikrotik"><a href="#mikrotik"><i class="fa-solid fa-route"></i> <span>MikroTik Router</span></a></li>
                     <li data-target="settings"><a href="#settings"><i class="fa-solid fa-sliders"></i> <span>Settings</span></a></li>
+                    <li data-target="users" id="nav-users" style="display: none;"><a href="#users"><i class="fa-solid fa-users"></i> <span>Users</span></a></li>
+                    <li data-target="history" id="nav-history" style="display: none;"><a href="#history"><i class="fa-solid fa-clock-rotate-left"></i> <span>Audit Logs</span></a></li>
                 </ul>
             </nav>
 
@@ -107,10 +112,10 @@
                 <div class="header-actions">
                     <span class="pve-version-tag" id="pve-version-tag">Proxmox VE --</span>
                     <!-- HOST NODE ACTIONS AND SHELL BUTTONS -->
-                    <button class="btn-refresh" id="btn-node-shell" style="background: #ffffff; color: #000000; border: 1px solid #000000;">
+                    <button class="btn-refresh staff-hide" id="btn-node-shell" style="background: #ffffff; color: #000000; border: 1px solid #000000;">
                         <i class="fa-solid fa-terminal"></i> Host Shell
                     </button>
-                    <div class="dropdown" style="position: relative; display: inline-block;">
+                    <div class="dropdown staff-hide" style="position: relative; display: inline-block;">
                         <button class="btn-refresh" id="btn-node-power" style="background: #ffffff; color: #000000; border: 1px solid #000000;">
                             <i class="fa-solid fa-power-off"></i> Host Power
                         </button>
@@ -695,7 +700,7 @@
                             </div>
                         </div>
 
-                        <div style="border-top: 1px solid var(--border-card); padding-top: 16px; margin-top: 4px; display: flex; justify-content: flex-end;">
+                        <div class="staff-hide" style="border-top: 1px solid var(--border-card); padding-top: 16px; margin-top: 4px; display: flex; justify-content: flex-end;">
                             <button type="submit" class="btn btn-primary" style="padding: 10px 24px; font-size: 14px; display: flex; align-items: center; gap: 8px;">
                                 <i class="fa-solid fa-floppy-disk"></i> Save Settings
                             </button>
@@ -739,7 +744,7 @@
                     <div style="display: flex; flex-direction: column; gap: 16px; grid-column: span 1;">
                         
                         <!-- Add Switch Form Card -->
-                        <div class="vm-list-card" style="width: 100%;">
+                        <div class="vm-list-card staff-hide" style="width: 100%;">
                             <div class="card-header">
                                 <h3>Add Switch Connection</h3>
                             </div>
@@ -750,7 +755,7 @@
                                 </div>
                                 <div style="display: flex; flex-direction: column; gap: 4px;">
                                     <label for="switch-ip" style="font-size: 12px; color: var(--text-secondary); font-weight: 500;">IP Address</label>
-                                    <input type="text" id="switch-ip" placeholder="192.168.200.4" required style="width: 100%; box-sizing: border-box;">
+                                    <input type="text" id="switch-ip" placeholder="192.168.200.4" required style="box-sizing: border-box;">
                                 </div>
                                 <button type="submit" class="btn btn-primary" style="margin-top: 8px; width: 100%; padding: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;">
                                     <i class="fa-solid fa-plus"></i> Add Device
@@ -762,13 +767,105 @@
                         <div class="events-log-card" style="width: 100%; display: flex; flex-direction: column;">
                             <div class="card-header" style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
                                 <h3>Switch SLA Event Logs</h3>
-                                <button class="btn-clear-logs" id="btn-clear-switch-logs" title="Clear SLA logs"><i class="fa-solid fa-trash-can"></i></button>
+                                <button class="btn-clear-logs staff-hide" id="btn-clear-switch-logs" title="Clear SLA logs"><i class="fa-solid fa-trash-can"></i></button>
                             </div>
                             <div class="card-body-logs" id="switch-sla-logs" style="min-height: 200px; max-height: 250px; overflow-y: auto;">
                                 <div class="text-muted text-center" style="font-size: 11px; padding: 20px;">No SLA events recorded.</div>
                             </div>
                         </div>
 
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW: USER MANAGEMENT (ADMIN ONLY) -->
+            <section id="view-users" class="view-section">
+                <div class="dashboard-grid" style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px; width: 100%;">
+                    
+                    <!-- Left: Users list -->
+                    <div class="vm-list-card" style="grid-column: span 1;">
+                        <div class="card-header">
+                            <h3>Users Accounts</h3>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="vm-table">
+                                <thead>
+                                    <tr>
+                                        <th>Username</th>
+                                        <th>Role</th>
+                                        <th class="text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="users-table-body">
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted">Loading users list...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Right: Add User Form -->
+                    <div class="vm-list-card" style="grid-column: span 1; height: fit-content;">
+                        <div class="card-header">
+                            <h3>Create New User</h3>
+                        </div>
+                        <form id="add-user-form" style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px;">
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <label for="new-username" style="font-size: 12px; color: var(--text-secondary); font-weight: 500;">Username</label>
+                                <input type="text" id="new-username" placeholder="john_doe" required style="width: 100%; box-sizing: border-box;">
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <label for="new-password" style="font-size: 12px; color: var(--text-secondary); font-weight: 500;">Password</label>
+                                <input type="password" id="new-password" placeholder="••••••••" required style="width: 100%; box-sizing: border-box;">
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <label for="new-role" style="font-size: 12px; color: var(--text-secondary); font-weight: 500;">Role</label>
+                                <select id="new-role" required style="width: 100%; padding: 8px; border: 1px solid var(--border-strong); border-radius: 7px; background: #ffffff; color: #111827; outline: none;">
+                                    <option value="staff">Staff (Read-Only)</option>
+                                    <option value="admin">Admin (Read-Write/Control)</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="margin-top: 8px; width: 100%; padding: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                                <i class="fa-solid fa-user-plus"></i> Create User
+                            </button>
+                        </form>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- VIEW: AUDIT LOGS HISTORY (ADMIN ONLY) -->
+            <section id="view-history" class="view-section">
+                <div class="vm-list-card" style="width: 100%;">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <div>
+                            <h3>Operations Audit Trail Logs</h3>
+                            <span style="font-size: 11px; color: var(--text-secondary);">Security tracking logs for ISO certification audit compliance</span>
+                        </div>
+                        <button class="btn btn-secondary" id="btn-clear-audit-logs" style="padding: 7px 12px; font-size: 12px; display: flex; align-items: center; gap: 7px; border-color: #d1d5db;">
+                            <i class="fa-solid fa-trash-can"></i> Clear Audit Logs
+                        </button>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="vm-table">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>IP Address</th>
+                                    <th>User</th>
+                                    <th>Action</th>
+                                    <th>Target</th>
+                                    <th>Status</th>
+                                    <th>Message Details</th>
+                                </tr>
+                            </thead>
+                            <tbody id="audit-table-body">
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted">Loading audit trail logs...</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </section>

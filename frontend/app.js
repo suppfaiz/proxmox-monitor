@@ -19,6 +19,8 @@ let switchesPollerId = null;
 let proxmoxWebUrl = '';
 let demoModeActive = true;
 let vncIntervalId = null;
+let currentUserRole = localStorage.getItem('pve_dashboard_role') || 'staff';
+let currentUsername = localStorage.getItem('pve_dashboard_username') || '';
 
 // SLA Alerts Tracking States
 let previousVmStatuses = {};
@@ -279,6 +281,12 @@ function triggerRouteUpdate(target) {
             case 'switches':
                 fetchSwitchesData();
                 fetchSwitchesSla();
+                break;
+            case 'users':
+                fetchUsers();
+                break;
+            case 'history':
+                fetchAuditLogs();
                 break;
             case 'mikrotik':
                 fetchMikrotikStats();
@@ -1441,6 +1449,158 @@ async function clearSwitchesSla() {
     }
 }
 
+function applyRoleAccessControl() {
+    // 1. Toggle body class for conditional CSS hiding
+    document.body.classList.toggle('role-staff', currentUserRole === 'staff');
+    document.body.classList.toggle('role-admin', currentUserRole === 'admin');
+
+    // 2. Hide Users & Audit Logs sidebar links
+    const navUsers = document.getElementById('nav-users');
+    const navHistory = document.getElementById('nav-history');
+    if (navUsers) navUsers.style.display = (currentUserRole === 'admin' ? 'block' : 'none');
+    if (navHistory) navHistory.style.display = (currentUserRole === 'admin' ? 'block' : 'none');
+
+    // 3. Update logged-in user profile display name
+    const userDisplayName = document.getElementById('user-display-name');
+    if (userDisplayName) {
+        userDisplayName.textContent = currentUsername 
+            ? `${currentUsername} (${currentUserRole.toUpperCase()})` 
+            : 'Not logged in';
+    }
+
+    // 4. If staff, disable settings input fields
+    const settingsInputs = document.querySelectorAll('#settings-form input, #settings-form select');
+    settingsInputs.forEach(input => {
+        input.disabled = (currentUserRole === 'staff');
+    });
+}
+
+async function fetchUsers() {
+    if (currentUserRole !== 'admin') return;
+    try {
+        const response = await authenticatedFetch(`${BACKEND_URL}/api/users`);
+        if (!response.ok) throw new Error();
+        const users = await response.json();
+        
+        const tbody = document.getElementById('users-table-body');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        
+        if (users.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted">No users found.</td></tr>`;
+            return;
+        }
+
+        users.forEach(u => {
+            const isSelf = u.username === currentUsername;
+            const isDefaultAdmin = u.username === 'admin';
+            
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${u.username}</strong> ${isSelf ? '<span class="text-muted">(You)</span>' : ''}</td>
+                    <td>
+                        <span class="badge-demo" style="background: ${u.role === 'admin' ? '#111827' : '#ffffff'}; color: ${u.role === 'admin' ? '#ffffff' : '#6b7280'}; border-color: ${u.role === 'admin' ? '#111827' : '#d1d5db'}; font-size: 10px;">
+                            ${u.role.toUpperCase()}
+                        </span>
+                    </td>
+                    <td class="text-right">
+                        ${isDefaultAdmin ? '<span class="text-muted" style="font-size:11px;">Protected</span>' : `
+                        <button class="btn btn-secondary" onclick="deleteUser(${u.id}, '${u.username}')" style="padding: 4px 8px; font-size: 11px; border-color: #d1d5db;">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                        `}
+                    </td>
+                </tr>
+            `;
+        });
+    } catch (e) {
+        console.error('Failed to fetch users list:', e);
+    }
+}
+
+async function addUser(username, password, role) {
+    try {
+        const response = await authenticatedFetch(`${BACKEND_URL}/api/users`, {
+            method: 'POST',
+            body: JSON.stringify({ username, password, role })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to add user');
+        showToast('User created successfully.');
+        fetchUsers();
+    } catch (e) {
+        showToast(e.message || 'Failed to add user.');
+    }
+}
+
+window.deleteUser = async function(id, username) {
+    if (username === currentUsername) {
+        alert('You cannot delete your own active user account.');
+        return;
+    }
+    if (!confirm(`Are you sure you want to delete user "${username}"?`)) return;
+    try {
+        const response = await authenticatedFetch(`${BACKEND_URL}/api/users/${id}`, {
+            method: 'DELETE'
+        });
+        if (!response.ok) throw new Error();
+        showToast('User account deleted.');
+        fetchUsers();
+    } catch (e) {
+        showToast('Failed to delete user.');
+    }
+}
+
+async function fetchAuditLogs() {
+    if (currentUserRole !== 'admin') return;
+    try {
+        const response = await authenticatedFetch(`${BACKEND_URL}/api/audit-logs`);
+        if (!response.ok) throw new Error();
+        const logs = await response.json();
+        
+        const tbody = document.getElementById('audit-table-body');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        
+        if (logs.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">No audit logs found.</td></tr>`;
+            return;
+        }
+
+        logs.forEach(log => {
+            const date = new Date(log.timestamp).toLocaleString();
+            const statusClass = log.status === 'success' ? 'color: var(--color-green); font-weight:700;' : 'color: var(--color-coral); font-weight:700;';
+            tbody.innerHTML += `
+                <tr>
+                    <td style="font-family: monospace; font-size: 11px; white-space: nowrap;">${date}</td>
+                    <td style="font-family: monospace; font-size: 11px; color: var(--text-secondary);">${log.ip_address || '-'}</td>
+                    <td><strong>${log.username}</strong></td>
+                    <td style="font-family: monospace; font-size: 11px;">${log.action.toUpperCase()}</td>
+                    <td>${log.target || '-'}</td>
+                    <td style="${statusClass}">${log.status.toUpperCase()}</td>
+                    <td style="font-size: 11.5px; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${log.message}">${log.message || '-'}</td>
+                </tr>
+            `;
+        });
+    } catch (e) {
+        console.error('Failed to fetch audit logs:', e);
+    }
+}
+
+async function clearAuditLogs() {
+    if (!confirm('Are you sure you want to clear the entire audit logs database?')) return;
+    try {
+        const response = await authenticatedFetch(`${BACKEND_URL}/api/audit-logs/clear`, {
+            method: 'POST'
+        });
+        if (!response.ok) throw new Error();
+        showToast('Audit trail logs database cleared.');
+        fetchAuditLogs();
+    } catch (e) {
+        showToast('Failed to clear audit logs.');
+    }
+}
+
 async function fetchSettings() {
     try {
         const response = await authenticatedFetch(`${BACKEND_URL}/api/settings`);
@@ -1917,6 +2077,10 @@ function setupPoller() {
                 fetchNetworkInterfaces();
             } else if (currentActiveRoute === 'mikrotik') {
                 fetchMikrotikStats();
+            } else if (currentActiveRoute === 'users') {
+                fetchUsers();
+            } else if (currentActiveRoute === 'history') {
+                fetchAuditLogs();
             }
         }
     }, POLL_INTERVAL);
@@ -1959,7 +2123,13 @@ async function startApp() {
             if (!response.ok) throw new Error(data.error || 'Login failed.');
             
             authToken = data.token;
+            currentUserRole = data.role || 'staff';
+            currentUsername = data.username || 'staff';
             localStorage.setItem('pve_dashboard_token', data.token);
+            localStorage.setItem('pve_dashboard_role', currentUserRole);
+            localStorage.setItem('pve_dashboard_username', currentUsername);
+            
+            applyRoleAccessControl();
             elLoginOverlay.style.display = 'none';
             showToast('Login successful! Welcome back.');
             
@@ -1974,7 +2144,12 @@ async function startApp() {
     // Logout trigger
     document.getElementById('btn-logout').addEventListener('click', () => {
         authToken = '';
+        currentUserRole = 'staff';
+        currentUsername = '';
         localStorage.removeItem('pve_dashboard_token');
+        localStorage.removeItem('pve_dashboard_role');
+        localStorage.removeItem('pve_dashboard_username');
+        applyRoleAccessControl();
         elLoginOverlay.style.display = 'flex';
         showToast('You have successfully logged out.');
         if (pollerId) clearInterval(pollerId);
@@ -2000,6 +2175,30 @@ async function startApp() {
             clearSwitchesSla();
         });
     }
+
+    // Add User Form submissions
+    const addUserForm = document.getElementById('add-user-form');
+    if (addUserForm) {
+        addUserForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const username = document.getElementById('new-username').value;
+            const password = document.getElementById('new-password').value;
+            const role = document.getElementById('new-role').value;
+            addUser(username, password, role);
+            addUserForm.reset();
+        });
+    }
+
+    // Clear Audit Logs button click
+    const btnClearAuditLogs = document.getElementById('btn-clear-audit-logs');
+    if (btnClearAuditLogs) {
+        btnClearAuditLogs.addEventListener('click', () => {
+            clearAuditLogs();
+        });
+    }
+
+    // Apply role access controls immediately on startup
+    applyRoleAccessControl();
 
     // Check if token exists
     if (!authToken) {
