@@ -957,7 +957,8 @@ body {
 ================================ */
 #settings-form input[type="text"],
 #settings-form input[type="password"],
-#settings-form input[type="number"] {
+#settings-form input[type="number"],
+#add-switch-form input[type="text"] {
     outline: none;
     background: #ffffff !important;
     border: 1px solid var(--border-strong) !important;
@@ -970,7 +971,8 @@ body {
     transition: var(--transition-smooth);
 }
 
-#settings-form input:focus {
+#settings-form input:focus,
+#add-switch-form input:focus {
     border-color: #111827 !important;
     box-shadow: 0 0 0 3px rgba(17,24,39,0.06) !important;
 }

@@ -15,6 +15,7 @@ let currentVms = [];
 let pendingAction = null;
 let currentActiveRoute = 'dashboard';
 let pollerId = null;
+let switchesPollerId = null;
 let proxmoxWebUrl = '';
 let demoModeActive = true;
 let vncIntervalId = null;
@@ -232,16 +233,17 @@ function handleRoute() {
     
     // 3. Update Title text
     const titles = {
-        dashboard: 'Pemantauan Server',
+        dashboard: 'Server Monitoring',
         nodes: 'Cluster Nodes',
-        vms: 'VMs & Containers',
-        storage: 'Penyimpanan (Storage Pools)',
-        backups: 'Jadwal & Riwayat Backup',
-        network: 'Bandwidth & Interfaces',
-        mikrotik: 'Pemantauan Router MikroTik',
-        settings: 'Pengaturan Koneksi Proxmox'
+        vms: 'VMs &amp; Containers',
+        storage: 'Storage Pools',
+        backups: 'Backup Schedule &amp; History',
+        network: 'Bandwidth &amp; Interfaces',
+        switches: 'Network Switches Connection',
+        mikrotik: 'MikroTik Router Monitoring',
+        settings: 'Proxmox Connection Settings'
     };
-    document.getElementById('page-title').textContent = titles[target] || 'Pemantauan Server';
+    document.getElementById('page-title').textContent = titles[target] || 'Server Monitoring';
     
     // 4. Immediate update on page load
     triggerRouteUpdate(target);
@@ -273,6 +275,10 @@ function triggerRouteUpdate(target) {
                 break;
             case 'network':
                 fetchNetworkInterfaces();
+                break;
+            case 'switches':
+                fetchSwitchesData();
+                fetchSwitchesSla();
                 break;
             case 'mikrotik':
                 fetchMikrotikStats();
@@ -1300,6 +1306,141 @@ async function fetchTasksHistory() {
     }
 }
 
+let previousSwitchStatuses = {};
+
+async function fetchSwitchesData() {
+    try {
+        const response = await authenticatedFetch(`${BACKEND_URL}/api/switches`);
+        if (!response.ok) throw new Error();
+        const devices = await response.json();
+        
+        // 1. Alert toast notifications on status connection changes (realtime SLA down/up alerts)
+        devices.forEach(sw => {
+            const prevStatus = previousSwitchStatuses[sw.id];
+            if (prevStatus && prevStatus !== sw.status) {
+                if (sw.status === 'offline') {
+                    showToast(`[SLA BREACH] Switch ${sw.name} went offline!`);
+                } else if (sw.status === 'online') {
+                    showToast(`[SLA RESTORED] Switch ${sw.name} is back online!`);
+                }
+            }
+            previousSwitchStatuses[sw.id] = sw.status;
+        });
+
+        const tbody = document.getElementById('switches-table-body');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        
+        if (devices.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">No switches configured.</td></tr>`;
+            return;
+        }
+
+        devices.forEach(dev => {
+            const isOnline = dev.status === 'online';
+            const statusClass = isOnline ? 'online' : 'offline';
+            const statusLabel = isOnline ? 'ONLINE' : 'OFFLINE';
+            const latencyStr = isOnline ? `${dev.latency} ms` : '-';
+            
+            const lastDownStr = dev.lastDown ? new Date(dev.lastDown).toLocaleTimeString() : '-';
+            const lastUpStr = dev.lastUp ? new Date(dev.lastUp).toLocaleTimeString() : '-';
+
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${dev.name}</strong></td>
+                    <td>${dev.ip}</td>
+                    <td>
+                        <span class="status-badge ${statusClass}">
+                            <span class="dot"></span> ${statusLabel}
+                        </span>
+                    </td>
+                    <td>${latencyStr}</td>
+                    <td style="font-size: 11px; color: var(--text-secondary);">${lastDownStr}</td>
+                    <td style="font-size: 11px; color: var(--text-secondary);">${lastUpStr}</td>
+                    <td class="text-right">
+                        <button class="btn btn-secondary" onclick="deleteSwitch('${dev.id}')" style="padding: 4px 8px; font-size: 11px; border-color: #d1d5db;">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+    } catch (e) {
+        console.error('Failed to fetch switches:', e);
+    }
+}
+
+async function fetchSwitchesSla() {
+    try {
+        const response = await authenticatedFetch(`${BACKEND_URL}/api/switches/sla`);
+        if (!response.ok) throw new Error();
+        const logs = await response.json();
+        
+        const el = document.getElementById('switch-sla-logs');
+        if (!el) return;
+        el.innerHTML = '';
+        
+        if (logs.length === 0) {
+            el.innerHTML = `<div class="text-muted text-center" style="font-size: 11px; padding: 20px;">No SLA events recorded.</div>`;
+            return;
+        }
+
+        logs.forEach(log => {
+            const isDown = log.type === 'down';
+            const timeTag = log.formattedTime || new Date(log.timestamp).toLocaleTimeString();
+            el.innerHTML += `
+                <div class="log-item" style="border-left: 3px solid ${isDown ? '#111827' : '#9ca3af'}; padding: 8px; margin-bottom: 6px; background: #fafafa; border: 1px solid #e5e7eb; border-left-width: 3px; border-radius: 4px; display: flex; gap: 8px; font-size: 11px;">
+                    <span class="log-time" style="color: var(--text-secondary); font-family: monospace;">[${timeTag}]</span>
+                    <span class="log-message" style="color: #111827; font-weight: 500;">${log.message}</span>
+                </div>
+            `;
+        });
+    } catch (e) {
+        console.error('Failed to fetch switch SLA logs:', e);
+    }
+}
+
+async function addSwitch(name, ip) {
+    try {
+        const response = await authenticatedFetch(`${BACKEND_URL}/api/switches`, {
+            method: 'POST',
+            body: JSON.stringify({ name, ip })
+        });
+        if (!response.ok) throw new Error();
+        showToast('Switch connection added.');
+        fetchSwitchesData();
+    } catch (e) {
+        showToast('Failed to add switch.');
+    }
+}
+
+window.deleteSwitch = async function(id) {
+    if (!confirm('Are you sure you want to remove this device?')) return;
+    try {
+        const response = await authenticatedFetch(`${BACKEND_URL}/api/switches/${id}`, {
+            method: 'DELETE'
+        });
+        if (!response.ok) throw new Error();
+        showToast('Switch connection deleted.');
+        fetchSwitchesData();
+    } catch (e) {
+        showToast('Failed to delete switch.');
+    }
+}
+
+async function clearSwitchesSla() {
+    try {
+        const response = await authenticatedFetch(`${BACKEND_URL}/api/switches/sla/clear`, {
+            method: 'POST'
+        });
+        if (!response.ok) throw new Error();
+        showToast('Switch SLA event logs cleared.');
+        fetchSwitchesSla();
+    } catch (e) {
+        showToast('Failed to clear SLA logs.');
+    }
+}
+
 async function fetchSettings() {
     try {
         const response = await authenticatedFetch(`${BACKEND_URL}/api/settings`);
@@ -1754,6 +1895,7 @@ async function executeNodeAction(node, action) {
 
 function setupPoller() {
     if (pollerId) clearInterval(pollerId);
+    if (switchesPollerId) clearInterval(switchesPollerId);
     if (!authToken) return; // Stop polling if not logged in
     
     pollerId = setInterval(async () => {
@@ -1778,6 +1920,18 @@ function setupPoller() {
             }
         }
     }, POLL_INTERVAL);
+
+    // Fast realtime switches poller (every 1 second)
+    switchesPollerId = setInterval(async () => {
+        if (!authToken) return;
+        if (currentActiveRoute === 'switches') {
+            const online = await checkBackendStatus();
+            if (online) {
+                fetchSwitchesData();
+                fetchSwitchesSla();
+            }
+        }
+    }, 1000);
 }
 
 // --- App Startup ---
@@ -1824,7 +1978,28 @@ async function startApp() {
         elLoginOverlay.style.display = 'flex';
         showToast('You have successfully logged out.');
         if (pollerId) clearInterval(pollerId);
+        if (switchesPollerId) clearInterval(switchesPollerId);
     });
+
+    // Add Switch Form submissions
+    const addSwitchForm = document.getElementById('add-switch-form');
+    if (addSwitchForm) {
+        addSwitchForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('switch-name').value;
+            const ip = document.getElementById('switch-ip').value;
+            addSwitch(name, ip);
+            addSwitchForm.reset();
+        });
+    }
+
+    // Clear Switch SLA Logs
+    const btnClearSwitchLogs = document.getElementById('btn-clear-switch-logs');
+    if (btnClearSwitchLogs) {
+        btnClearSwitchLogs.addEventListener('click', () => {
+            clearSwitchesSla();
+        });
+    }
 
     // Check if token exists
     if (!authToken) {

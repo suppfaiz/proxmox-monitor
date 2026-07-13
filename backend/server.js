@@ -922,6 +922,254 @@ app.post('/api/node/:node/status/:action', async (req, res) => {
   }
 });
 
+// --- SWITCHES & PING NETWORK STATUS CONNECTIONS ---
+const { exec } = require('child_process');
+const switchesPath = path.join(__dirname, 'switches.json');
+const networkSlaPath = path.join(__dirname, 'network_sla.json');
+
+let switchesList = [];
+let networkSlaLogs = [];
+
+// Initialize switches.json if it doesn't exist
+try {
+  if (fs.existsSync(switchesPath)) {
+    switchesList = JSON.parse(fs.readFileSync(switchesPath, 'utf8'));
+  } else {
+    switchesList = [
+      { id: "sw-1", name: "Core Switch 01", ip: "192.168.200.2", status: "online", latency: 1, lastDown: null, lastUp: null },
+      { id: "sw-2", name: "Access Switch 01", ip: "192.168.200.3", status: "online", latency: 2, lastDown: null, lastUp: null }
+    ];
+    fs.writeFileSync(switchesPath, JSON.stringify(switchesList, null, 2), 'utf8');
+  }
+} catch (e) {
+  console.error("Failed to load switches:", e);
+}
+
+// Initialize network_sla.json if it doesn't exist
+try {
+  if (fs.existsSync(networkSlaPath)) {
+    networkSlaLogs = JSON.parse(fs.readFileSync(networkSlaPath, 'utf8'));
+  } else {
+    networkSlaLogs = [];
+    fs.writeFileSync(networkSlaPath, JSON.stringify(networkSlaLogs, null, 2), 'utf8');
+  }
+} catch (e) {
+  console.error("Failed to load network SLA logs:", e);
+}
+
+const saveSwitches = () => {
+  try {
+    fs.writeFileSync(switchesPath, JSON.stringify(switchesList, null, 2), 'utf8');
+  } catch (e) {
+    console.error("Failed to save switches:", e);
+  }
+};
+
+const saveSlaLogs = () => {
+  try {
+    if (networkSlaLogs.length > 100) networkSlaLogs = networkSlaLogs.slice(0, 100);
+    fs.writeFileSync(networkSlaPath, JSON.stringify(networkSlaLogs, null, 2), 'utf8');
+  } catch (e) {
+    console.error("Failed to save SLA logs:", e);
+  }
+};
+
+function pingDevice(device) {
+  const isWin = process.platform === 'win32';
+  const pingCmd = isWin 
+    ? `ping -n 1 -w 1000 ${device.ip}` 
+    : `ping -c 1 -W 1 ${device.ip}`;
+
+  exec(pingCmd, (err, stdout, stderr) => {
+    const isOnline = !err;
+    let latency = 0;
+    
+    if (isOnline) {
+      const match = stdout.match(/time[=:<]([\d.]+)\s*ms/i);
+      if (match) {
+        latency = Math.round(parseFloat(match[1]));
+      } else {
+        latency = 1;
+      }
+    }
+
+    const prevStatus = device.status;
+    const newStatus = isOnline ? 'online' : 'offline';
+    device.status = newStatus;
+    device.latency = isOnline ? latency : 0;
+
+    const nowStr = new Date().toLocaleTimeString() + ' ' + new Date().toLocaleDateString();
+
+    if (newStatus === 'offline' && (prevStatus === 'online' || prevStatus === undefined)) {
+      device.lastDown = new Date().toISOString();
+      const alertMsg = `SLA BREACH: Switch ${device.name} (${device.ip}) is Offline!`;
+      const logEntry = {
+        id: Math.random().toString(36).substring(2, 9),
+        type: 'down',
+        deviceName: device.name,
+        deviceIp: device.ip,
+        timestamp: new Date().toISOString(),
+        formattedTime: nowStr,
+        message: alertMsg
+      };
+      networkSlaLogs.unshift(logEntry);
+      saveSlaLogs();
+      console.log(alertMsg);
+    } else if (newStatus === 'online' && prevStatus === 'offline') {
+      device.lastUp = new Date().toISOString();
+      const downTime = device.lastDown ? new Date(device.lastDown) : null;
+      let durationStr = 'Unknown';
+      if (downTime) {
+        const durationSec = Math.round((new Date() - downTime) / 1000);
+        durationStr = `${durationSec}s`;
+      }
+      const alertMsg = `SLA RESTORED: Switch ${device.name} (${device.ip}) is Online! Downtime: ${durationStr}`;
+      const logEntry = {
+        id: Math.random().toString(36).substring(2, 9),
+        type: 'up',
+        deviceName: device.name,
+        deviceIp: device.ip,
+        timestamp: new Date().toISOString(),
+        formattedTime: nowStr,
+        lastDown: device.lastDown,
+        duration: durationStr,
+        message: alertMsg
+      };
+      networkSlaLogs.unshift(logEntry);
+      saveSlaLogs();
+      console.log(alertMsg);
+      device.lastDown = null;
+    }
+  });
+}
+
+// Switch Pinger Loop (Runs every 1 second)
+setInterval(() => {
+  switchesList.forEach(device => {
+    if (config.demoMode) {
+      if (!device.demoOfflineTimer) device.demoOfflineTimer = 0;
+      if (!device.isOfflineDemo) device.isOfflineDemo = false;
+
+      // 1.5% chance to start offline simulation of 5-15 seconds
+      if (!device.isOfflineDemo && Math.random() < 0.015) {
+        device.isOfflineDemo = true;
+        device.demoOfflineTimer = Math.floor(5 + Math.random() * 10);
+      }
+
+      let isOnline = true;
+      if (device.isOfflineDemo) {
+        if (device.demoOfflineTimer > 0) {
+          device.demoOfflineTimer--;
+          isOnline = false;
+        } else {
+          device.isOfflineDemo = false;
+          isOnline = true;
+        }
+      }
+
+      const latency = isOnline ? Math.floor(1 + Math.random() * 5) : 0;
+      const prevStatus = device.status;
+      const newStatus = isOnline ? 'online' : 'offline';
+      device.status = newStatus;
+      device.latency = latency;
+
+      const nowStr = new Date().toLocaleTimeString() + ' ' + new Date().toLocaleDateString();
+
+      if (newStatus === 'offline' && (prevStatus === 'online' || prevStatus === undefined)) {
+        device.lastDown = new Date().toISOString();
+        const alertMsg = `SLA BREACH: Switch ${device.name} (${device.ip}) is Offline!`;
+        const logEntry = {
+          id: Math.random().toString(36).substring(2, 9),
+          type: 'down',
+          deviceName: device.name,
+          deviceIp: device.ip,
+          timestamp: new Date().toISOString(),
+          formattedTime: nowStr,
+          message: alertMsg
+        };
+        networkSlaLogs.unshift(logEntry);
+        saveSlaLogs();
+        console.log(alertMsg);
+      } else if (newStatus === 'online' && prevStatus === 'offline') {
+        device.lastUp = new Date().toISOString();
+        const downTime = device.lastDown ? new Date(device.lastDown) : null;
+        let durationStr = 'Unknown';
+        if (downTime) {
+          const durationSec = Math.round((new Date() - downTime) / 1000);
+          durationStr = `${durationSec}s`;
+        }
+        const alertMsg = `SLA RESTORED: Switch ${device.name} (${device.ip}) is Online! Downtime: ${durationStr}`;
+        const logEntry = {
+          id: Math.random().toString(36).substring(2, 9),
+          type: 'up',
+          deviceName: device.name,
+          deviceIp: device.ip,
+          timestamp: new Date().toISOString(),
+          formattedTime: nowStr,
+          lastDown: device.lastDown,
+          duration: durationStr,
+          message: alertMsg
+        };
+        networkSlaLogs.unshift(logEntry);
+        saveSlaLogs();
+        console.log(alertMsg);
+        device.lastDown = null;
+      }
+    } else {
+      pingDevice(device);
+    }
+  });
+}, 1000);
+
+// API Endpoint: Get configured switches
+app.get('/api/switches', authenticateToken, (req, res) => {
+  res.json(switchesList);
+});
+
+// API Endpoint: Add a new switch
+app.post('/api/switches', authenticateToken, (req, res) => {
+  const { name, ip } = req.body;
+  if (!name || !ip) {
+    return res.status(400).json({ error: 'Name and IP are required fields' });
+  }
+  const newDevice = {
+    id: 'sw-' + Math.random().toString(36).substring(2, 9),
+    name,
+    ip,
+    status: 'online',
+    latency: 1,
+    lastDown: null,
+    lastUp: null
+  };
+  switchesList.push(newDevice);
+  saveSwitches();
+  res.json(newDevice);
+});
+
+// API Endpoint: Delete a switch
+app.delete('/api/switches/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const index = switchesList.findIndex(d => d.id === id);
+  if (index === -1) {
+    return res.status(404).json({ error: 'Device not found' });
+  }
+  switchesList.splice(index, 1);
+  saveSwitches();
+  res.json({ success: true, message: 'Device deleted successfully' });
+});
+
+// API Endpoint: Get switch SLA logs
+app.get('/api/switches/sla', authenticateToken, (req, res) => {
+  res.json(networkSlaLogs);
+});
+
+// API Endpoint: Clear SLA logs
+app.post('/api/switches/sla/clear', authenticateToken, (req, res) => {
+  networkSlaLogs = [];
+  saveSlaLogs();
+  res.json({ success: true });
+});
+
 // Start Server
 app.listen(PORT, () => {
   console.log(`==================================================`);
