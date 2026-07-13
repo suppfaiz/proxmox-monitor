@@ -77,14 +77,14 @@
             </nav>
 
             <div class="sidebar-footer">
-                <div class="status-indicator" style="margin-bottom: 8px;">
+                <div class="status-indicator">
                     <span class="pulse-dot green"></span>
                     <span id="backend-status-text">Connecting Backend...</span>
                 </div>
-                <div style="display: flex; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap;">
+                <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;">
                     <span id="backend-mode-badge" class="badge-demo">DEMO MODE</span>
                 </div>
-                <button class="btn btn-secondary" id="btn-logout" style="width: 100%; padding: 8px 12px; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #ef4444; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                <button class="btn btn-secondary" id="btn-logout" style="width: 100%; padding: 7px 12px; font-size: 12.5px; display: flex; align-items: center; justify-content: center; gap: 7px; cursor: pointer;">
                     <i class="fa-solid fa-right-from-bracket"></i> Keluar (Sign Out)
                 </button>
             </div>
@@ -138,35 +138,35 @@
                 <!-- TOP MINI STATS GRID -->
                 <div class="dashboard-mini-grid">
                     <div class="mini-card">
-                        <div class="mini-card-icon"><i class="fa-solid fa-circle-nodes" style="color: var(--color-teal);"></i></div>
+                        <div class="mini-card-icon"><i class="fa-solid fa-circle-nodes"></i></div>
                         <div class="mini-card-text">
                             <span class="mini-title">Node Cluster</span>
                             <span class="mini-value" id="mini-cluster-status">1 / 2 Online</span>
                         </div>
                     </div>
                     <div class="mini-card">
-                        <div class="mini-card-icon"><i class="fa-solid fa-gauge-high" style="color: var(--color-purple);"></i></div>
+                        <div class="mini-card-icon"><i class="fa-solid fa-gauge-high"></i></div>
                         <div class="mini-card-text">
                             <span class="mini-title">Load Average</span>
                             <span class="mini-value" id="mini-load-average">0.00, 0.00, 0.00</span>
                         </div>
                     </div>
                     <div class="mini-card">
-                        <div class="mini-card-icon"><i class="fa-solid fa-arrow-right-arrow-left" style="color: var(--color-coral);"></i></div>
+                        <div class="mini-card-icon"><i class="fa-solid fa-arrow-right-arrow-left"></i></div>
                         <div class="mini-card-text">
                             <span class="mini-title">Disk IO Wait</span>
                             <span class="mini-value" id="mini-io-wait">0.00%</span>
                         </div>
                     </div>
                     <div class="mini-card">
-                        <div class="mini-card-icon"><i class="fa-solid fa-server" style="color: var(--color-green);"></i></div>
+                        <div class="mini-card-icon"><i class="fa-solid fa-server"></i></div>
                         <div class="mini-card-text">
-                            <span class="mini-title">VMs & CTs</span>
+                            <span class="mini-title">VMs &amp; CTs</span>
                             <span class="mini-value" id="mini-vms-count">0 / 0 Active</span>
                         </div>
                     </div>
                     <div class="mini-card" id="mini-mikrotik-card" style="cursor: pointer;" onclick="window.location.hash='#mikrotik'">
-                        <div class="mini-card-icon"><i class="fa-solid fa-route" style="color: #10b981;"></i></div>
+                        <div class="mini-card-icon"><i class="fa-solid fa-route"></i></div>
                         <div class="mini-card-text">
                             <span class="mini-title">MikroTik Router</span>
                             <span class="mini-value" id="mini-mikrotik-status">Checking...</span>
@@ -512,32 +512,32 @@
             <section id="view-mikrotik" class="view-section">
                 <!-- Header Stats Cards -->
                 <div class="metrics-grid" style="grid-column: span 3; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; width: 100%; margin-bottom: 20px;">
-                    <div class="metric-card glassmorphic">
+                    <div class="metric-card">
                         <div class="metric-header">
                             <span>Router Status</span>
-                            <i class="fa-solid fa-route" style="color: #10b981;"></i>
+                            <i class="fa-solid fa-route"></i>
                         </div>
                         <div class="metric-body">
                             <h2 id="mikrotik-status-text">Checking...</h2>
                             <p id="mikrotik-uptime-text" style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">Uptime: --</p>
                         </div>
                     </div>
-                    <div class="metric-card glassmorphic">
+                    <div class="metric-card">
                         <div class="metric-header">
                             <span>CPU Usage</span>
-                            <i class="fa-solid fa-microchip" style="color: #ff9966;"></i>
+                            <i class="fa-solid fa-microchip"></i>
                         </div>
                         <div class="metric-body" style="display: flex; align-items: center; justify-content: space-between;">
                             <h2 id="mikrotik-cpu-text">--%</h2>
-                            <div style="width: 80px; height: 10px; background: rgba(255,255,255,0.05); border-radius: 5px; overflow: hidden; border: 1px solid var(--border-card);">
-                                <div id="mikrotik-cpu-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #ff9966, #ff5e62); transition: width 0.5s ease;"></div>
+                            <div style="width: 80px; height: 8px; background: #f3f4f6; border-radius: 4px; overflow: hidden; border: 1px solid var(--border-card);">
+                                <div id="mikrotik-cpu-bar" style="width: 0%; height: 100%; background: #111827; transition: width 0.5s ease;"></div>
                             </div>
                         </div>
                     </div>
-                    <div class="metric-card glassmorphic">
+                    <div class="metric-card">
                         <div class="metric-header">
                             <span>RAM Memory</span>
-                            <i class="fa-solid fa-memory" style="color: var(--color-teal);"></i>
+                            <i class="fa-solid fa-memory"></i>
                         </div>
                         <div class="metric-body">
                             <h2 id="mikrotik-ram-text">-- / --</h2>
@@ -553,16 +553,16 @@
                         <div class="card-header">
                             <h3>Spesifikasi Router</h3>
                         </div>
-                        <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px; font-size: 13px;">
-                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 8px;">
+                        <div style="display: flex; flex-direction: column; gap: 12px; font-size: 13px;">
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-card); padding-bottom: 8px;">
                                 <span style="color: var(--text-secondary);">System Name</span>
                                 <strong id="mikrotik-spec-name">--</strong>
                             </div>
-                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 8px;">
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-card); padding-bottom: 8px;">
                                 <span style="color: var(--text-secondary);">Model Hardware</span>
                                 <strong id="mikrotik-spec-model">--</strong>
                             </div>
-                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 8px;">
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-card); padding-bottom: 8px;">
                                 <span style="color: var(--text-secondary);">OS Version</span>
                                 <strong id="mikrotik-spec-os">--</strong>
                             </div>
@@ -578,13 +578,13 @@
                         <div class="card-header">
                             <h3>Router Disk Storage</h3>
                         </div>
-                        <div style="padding: 16px; display: flex; flex-direction: column; justify-content: center; height: 100%;">
-                            <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px;">
+                        <div style="display: flex; flex-direction: column; justify-content: center; height: 100%; gap: 10px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 13px;">
                                 <span style="color: var(--text-secondary);">Kapasitas Penyimpanan</span>
                                 <strong id="mikrotik-disk-text">-- / --</strong>
                             </div>
-                            <div style="width: 100%; height: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; overflow: hidden; border: 1px solid var(--border-card); margin-bottom: 8px;">
-                                <div id="mikrotik-disk-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--color-teal), #00d2ff); transition: width 0.5s ease;"></div>
+                            <div style="width: 100%; height: 8px; background: #f3f4f6; border-radius: 4px; overflow: hidden; border: 1px solid var(--border-card);">
+                                <div id="mikrotik-disk-bar" style="width: 0%; height: 100%; background: #111827; transition: width 0.5s ease;"></div>
                             </div>
                             <p id="mikrotik-disk-pct" style="font-size: 11px; color: var(--text-secondary);">0% terpakai</p>
                         </div>
@@ -595,12 +595,12 @@
                 <div class="vm-list-card" style="grid-column: span 3; width: 100%; margin-bottom: 20px;">
                     <div class="card-header">
                         <h3>Real-time Traffic History (WAN)</h3>
-                        <div class="chart-legend" style="display: flex; gap: 16px; font-size: 12px;">
-                            <span class="legend-item m-rx" style="display: flex; align-items: center; gap: 6px;"><span class="dot green" style="background: #10b981; width: 8px; height: 8px; border-radius: 50%; display: inline-block;"></span> WAN RX (Download)</span>
-                            <span class="legend-item m-tx" style="display: flex; align-items: center; gap: 6px;"><span class="dot orange" style="background: #ff9966; width: 8px; height: 8px; border-radius: 50%; display: inline-block;"></span> WAN TX (Upload)</span>
+                        <div class="chart-legend">
+                            <span class="legend-item"><span class="dot teal"></span> WAN RX (Download)</span>
+                            <span class="legend-item"><span class="dot purple"></span> WAN TX (Upload)</span>
                         </div>
                     </div>
-                    <div class="card-body-chart" style="height: 250px; padding: 10px 16px;">
+                    <div class="card-body-chart" style="height: 250px;">
                         <canvas id="mikrotikDetailChart"></canvas>
                     </div>
                 </div>
@@ -643,53 +643,53 @@
                         <div style="display: flex; flex-direction: column; gap: 6px;">
                             <label style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">Mode Simulasi (Demo)</label>
                             <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
-                                <input type="checkbox" id="settings-demo-mode" style="width: 18px; height: 18px; cursor: pointer;">
+                                <input type="checkbox" id="settings-demo-mode" style="width: 16px; height: 16px; cursor: pointer; accent-color: #111827;">
                                 <span style="font-size: 13px;">Aktifkan Demo Mode (Simulasi data sensor)</span>
                             </div>
                         </div>
 
                         <div id="settings-credentials" style="display: flex; flex-direction: column; gap: 16px;">
                             <div style="display: flex; flex-direction: column; gap: 6px;">
-                                <label for="settings-api-url" style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">Proxmox API URL</label>
-                                <input type="text" id="settings-api-url" placeholder="https://192.168.1.100:8006/api2/json" style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-card); border-radius: 8px; padding: 10px 14px; color: var(--text-primary); font-family: inherit; font-size: 14px;">
+                                <label for="settings-api-url">Proxmox API URL</label>
+                                <input type="text" id="settings-api-url" placeholder="https://192.168.1.100:8006/api2/json">
                                 <span style="font-size: 11px; color: var(--text-muted);">Masukkan format URL API Proxmox VE lengkap Anda (tanpa tanda / di akhir).</span>
                             </div>
 
                             <div style="display: flex; flex-direction: column; gap: 6px;">
-                                <label for="settings-token-id" style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">Proxmox Token ID</label>
-                                <input type="text" id="settings-token-id" placeholder="root@pam!dashboard" style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-card); border-radius: 8px; padding: 10px 14px; color: var(--text-primary); font-family: inherit; font-size: 14px;">
+                                <label for="settings-token-id">Proxmox Token ID</label>
+                                <input type="text" id="settings-token-id" placeholder="root@pam!dashboard">
                                 <span style="font-size: 11px; color: var(--text-muted);">Token ID yang dibuat di Proxmox, contoh: user@realm!tokenid</span>
                             </div>
 
                             <div style="display: flex; flex-direction: column; gap: 6px;">
-                                <label for="settings-token-secret" style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">Proxmox Token Secret</label>
-                                <input type="password" id="settings-token-secret" placeholder="••••••••••••••••" style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-card); border-radius: 8px; padding: 10px 14px; color: var(--text-primary); font-family: inherit; font-size: 14px;">
+                                <label for="settings-token-secret">Proxmox Token Secret</label>
+                                <input type="password" id="settings-token-secret" placeholder="••••••••••••••••">
                                 <span style="font-size: 11px; color: var(--text-muted);">Secret Value UUID Token Anda (tidak akan dibagikan ke client luar backend).</span>
                             </div>
                         </div>
 
                         <!-- MikroTik SNMP Configuration Fields -->
-                        <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 16px; margin-top: 8px;">
-                            <h4 style="font-size: 14px; margin-bottom: 12px; color: var(--color-teal);"><i class="fa-solid fa-route"></i> Konfigurasi MikroTik SNMP</h4>
+                        <div style="border-top: 1px solid var(--border-card); padding-top: 16px; margin-top: 4px;">
+                            <h4 style="font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.04em;"><i class="fa-solid fa-route"></i> Konfigurasi MikroTik SNMP</h4>
                         </div>
 
                         <div style="display: flex; flex-direction: column; gap: 6px;">
-                            <label for="settings-mikrotik-ip" style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">Alamat IP MikroTik Router</label>
-                            <input type="text" id="settings-mikrotik-ip" placeholder="192.168.88.1" style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-card); border-radius: 8px; padding: 10px 14px; color: var(--text-primary); font-family: inherit; font-size: 14px;">
+                            <label for="settings-mikrotik-ip">Alamat IP MikroTik Router</label>
+                            <input type="text" id="settings-mikrotik-ip" placeholder="192.168.88.1">
                         </div>
 
                         <div style="display: flex; gap: 16px; flex-wrap: wrap;">
                             <div style="display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 150px;">
-                                <label for="settings-mikrotik-community" style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">SNMP Community</label>
-                                <input type="text" id="settings-mikrotik-community" placeholder="public" style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-card); border-radius: 8px; padding: 10px 14px; color: var(--text-primary); font-family: inherit; font-size: 14px;">
+                                <label for="settings-mikrotik-community">SNMP Community</label>
+                                <input type="text" id="settings-mikrotik-community" placeholder="public">
                             </div>
-                            <div style="display: flex; flex-direction: column; gap: 6px; width: 120px;">
-                                <label for="settings-mikrotik-port" style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">SNMP Port</label>
-                                <input type="number" id="settings-mikrotik-port" placeholder="161" style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-card); border-radius: 8px; padding: 10px 14px; color: var(--text-primary); font-family: inherit; font-size: 14px;">
+                            <div style="display: flex; flex-direction: column; gap: 6px; width: 130px;">
+                                <label for="settings-mikrotik-port">SNMP Port</label>
+                                <input type="number" id="settings-mikrotik-port" placeholder="161">
                             </div>
                         </div>
 
-                        <div style="border-top: 1px solid var(--border-card); padding-top: 16px; margin-top: 8px; display: flex; justify-content: flex-end;">
+                        <div style="border-top: 1px solid var(--border-card); padding-top: 16px; margin-top: 4px; display: flex; justify-content: flex-end;">
                             <button type="submit" class="btn btn-primary" style="padding: 10px 24px; font-size: 14px; display: flex; align-items: center; gap: 8px;">
                                 <i class="fa-solid fa-floppy-disk"></i> Simpan Pengaturan
                             </button>
@@ -720,30 +720,30 @@
 
     <!-- Terminal Console Modal (for Demo Mode simulation) -->
     <div class="modal" id="terminal-modal">
-        <div class="modal-content" style="width: 800px; max-width: 95%; background: #050811; border: 1px solid rgba(0, 242, 254, 0.2); padding: 0; display: flex; flex-direction: column; box-shadow: 0 0 30px rgba(0, 242, 254, 0.15);">
-            <div class="modal-header" style="background: rgba(255,255,255,0.02); padding: 12px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); margin-bottom: 0; display: flex; justify-content: space-between; align-items: center;">
+        <div class="modal-content" style="width: 800px; max-width: 95%; background: #0d1117; border: 1px solid #30363d; padding: 0; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.4);">
+            <div class="modal-header" style="background: #161b22; padding: 12px 20px; border-bottom: 1px solid #30363d; margin-bottom: 0; display: flex; justify-content: space-between; align-items: center;">
                 <div style="display: flex; align-items: center; gap: 16px;">
-                    <h3 style="font-size: 14px; font-family: monospace; color: var(--color-teal); display: flex; align-items: center; gap: 8px; margin: 0;">
-                        <i class="fa-solid fa-terminal"></i> Console: <span id="terminal-title">VM-101 (web-server-01)</span>
+                    <h3 style="font-size: 13px; font-family: monospace; color: #e6edf3; display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 600;">
+                        <i class="fa-solid fa-terminal" style="color: #8b949e;"></i> Console: <span id="terminal-title">VM-101 (web-server-01)</span>
                     </h3>
-                    <div class="console-tabs" style="display: flex; gap: 10px; margin-left: 16px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 16px;">
-                        <span class="console-tab active" data-tab="cli" style="cursor: pointer; font-size: 12px; font-family: monospace; color: var(--color-teal); padding: 2px 8px; border-radius: 4px; background: rgba(0,242,254,0.1); transition: var(--transition-smooth);">[ CLI Shell ]</span>
-                        <span class="console-tab" data-tab="vnc" style="cursor: pointer; font-size: 12px; font-family: monospace; color: var(--text-secondary); padding: 2px 8px; border-radius: 4px; transition: var(--transition-smooth);">[ noVNC Desktop ]</span>
+                    <div class="console-tabs" style="display: flex; gap: 6px; margin-left: 12px; border-left: 1px solid #30363d; padding-left: 12px;">
+                        <span class="console-tab active" data-tab="cli">[ CLI Shell ]</span>
+                        <span class="console-tab" data-tab="vnc">[ noVNC Desktop ]</span>
                     </div>
                 </div>
-                <span class="close-modal" id="close-terminal-modal" style="font-size: 20px;">&times;</span>
+                <span class="close-modal" id="close-terminal-modal" style="color: #8b949e; font-size: 20px;">&times;</span>
             </div>
             
-            <div class="modal-body" style="padding: 16px; flex-grow: 1; display: flex; flex-direction: column; background: #020408;">
+            <div class="modal-body" style="padding: 16px; flex-grow: 1; display: flex; flex-direction: column; background: #0d1117;">
                 
                 <!-- CLI Terminal View -->
                 <div id="terminal-view-cli" style="display: flex; flex-direction: column; width: 100%;">
-                    <div id="terminal-body" style="background: #020408; font-family: monospace; font-size: 12px; color: #33ff33; padding: 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.03); min-height: 350px; max-height: 380px; overflow-y: auto; line-height: 1.5; white-space: pre-wrap; text-align: left;">
+                    <div id="terminal-body" style="background: #0d1117; font-family: 'Courier New', Consolas, monospace; font-size: 12px; color: #3fb950; padding: 14px; border-radius: 6px; border: 1px solid #30363d; min-height: 350px; max-height: 380px; overflow-y: auto; line-height: 1.6; white-space: pre-wrap; text-align: left;">
                         <!-- Simulating boot logs -->
                     </div>
-                    <div style="display: flex; gap: 8px; align-items: center; margin-top: 12px; background: rgba(0,0,0,0.4); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.03);">
-                        <span style="font-family: monospace; font-size: 12px; color: #33ff33;" id="terminal-prompt">root@web-server-01:~#</span>
-                        <input type="text" id="terminal-input" style="flex-grow: 1; background: transparent; border: none; outline: none; font-family: monospace; font-size: 12px; color: #33ff33;" placeholder="Ketik perintah di sini (misal: help, neofetch, clear, exit)...">
+                    <div style="display: flex; gap: 8px; align-items: center; margin-top: 10px; background: #161b22; padding: 8px 14px; border-radius: 6px; border: 1px solid #30363d;">
+                        <span style="font-family: 'Courier New', monospace; font-size: 12px; color: #3fb950;" id="terminal-prompt">root@web-server-01:~#</span>
+                        <input type="text" id="terminal-input" style="flex-grow: 1; background: transparent; border: none; outline: none; font-family: 'Courier New', monospace; font-size: 12px; color: #e6edf3;" placeholder="Ketik perintah di sini (misal: help, neofetch, clear, exit)...">
                     </div>
                 </div>
 
@@ -759,16 +759,16 @@
                         
                         <!-- Left Ubuntu Dock -->
                         <div class="vnc-dock">
-                            <div class="dock-icon" title="Browser (Firefox)" onclick="alert('Firefox is running - Accessing Proxmox VE Administration GUI...')"><i class="fa-brands fa-firefox" style="color: #ff9f1c;"></i></div>
-                            <div class="dock-icon" title="File Manager" onclick="alert('File Manager: /var/www/html/proxmox-dashboard')"><i class="fa-solid fa-folder-open" style="color: #ffca3a;"></i></div>
-                            <div class="dock-icon" id="vnc-terminal-icon" title="Local Terminal" onclick="alert('Terminal emulator is already running under [ CLI Shell ] tab!')"><i class="fa-solid fa-terminal" style="color: #33ff33;"></i></div>
-                            <div class="dock-icon" title="System Settings" onclick="alert('System Settings: Network, Displays, Backgrounds...')"><i class="fa-solid fa-gear" style="color: #adb5bd;"></i></div>
+                            <div class="dock-icon" title="Browser (Firefox)" onclick="alert('Firefox is running - Accessing Proxmox VE Administration GUI...')"><i class="fa-brands fa-firefox"></i></div>
+                            <div class="dock-icon" title="File Manager" onclick="alert('File Manager: /var/www/html/proxmox-dashboard')"><i class="fa-solid fa-folder-open"></i></div>
+                            <div class="dock-icon" id="vnc-terminal-icon" title="Local Terminal" onclick="alert('Terminal emulator is already running under [ CLI Shell ] tab!')"><i class="fa-solid fa-terminal"></i></div>
+                            <div class="dock-icon" title="System Settings" onclick="alert('System Settings: Network, Displays, Backgrounds...')"><i class="fa-solid fa-gear"></i></div>
                         </div>
 
                         <!-- Mock Application Window (Ubuntu System Monitor) -->
                         <div class="mock-window" id="vnc-app-window">
                             <div class="mock-window-header">
-                                <span class="window-title" id="vnc-window-title"><i class="fa-solid fa-chart-line" style="color: var(--color-teal);"></i> System Monitor (Debian GNOME)</span>
+                                <span class="window-title" id="vnc-window-title"><i class="fa-solid fa-chart-line"></i> System Monitor (Debian GNOME)</span>
                                 <div class="window-controls">
                                     <span class="control-dot red" style="cursor: pointer;" onclick="document.getElementById('vnc-app-window').style.display='none'"></span>
                                     <span class="control-dot yellow"></span>
@@ -776,18 +776,18 @@
                                 </div>
                             </div>
                             <div class="mock-window-body">
-                                <p style="font-weight: 700; margin-bottom: 8px; color: var(--color-teal); display: flex; align-items: center; gap: 6px; font-size: 11px;"><i class="fa-solid fa-microchip"></i> CPU Cores history</p>
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; background: rgba(0,0,0,0.25); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.03); font-size: 11px;">
-                                    <span>Core 1: <strong id="vnc-monitor-cpu1" style="color: #33ff33;">24%</strong></span>
-                                    <span>Core 2: <strong id="vnc-monitor-cpu2" style="color: #33ff33;">48%</strong></span>
+                                <p style="font-weight: 700; margin-bottom: 8px; color: #374151; display: flex; align-items: center; gap: 6px; font-size: 11px;"><i class="fa-solid fa-microchip"></i> CPU Cores history</p>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; background: #f3f4f6; padding: 8px 12px; border-radius: 5px; border: 1px solid #e5e7eb; font-size: 11px;">
+                                    <span>Core 1: <strong id="vnc-monitor-cpu1" style="color: #111827;">24%</strong></span>
+                                    <span>Core 2: <strong id="vnc-monitor-cpu2" style="color: #111827;">48%</strong></span>
                                 </div>
-                                <p style="font-weight: 700; margin-bottom: 8px; color: var(--color-purple); display: flex; align-items: center; gap: 6px; font-size: 11px;"><i class="fa-solid fa-memory"></i> Memory allocation history</p>
-                                <div style="background: rgba(0,0,0,0.25); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.03); font-size: 11px;">
-                                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <p style="font-weight: 700; margin-bottom: 8px; color: #374151; display: flex; align-items: center; gap: 6px; font-size: 11px;"><i class="fa-solid fa-memory"></i> Memory allocation history</p>
+                                <div style="background: #f3f4f6; padding: 8px 12px; border-radius: 5px; border: 1px solid #e5e7eb; font-size: 11px;">
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                                         <span>RAM In-Use:</span>
                                         <span id="vnc-monitor-ram">1.82 GB / 4.00 GB</span>
                                     </div>
-                                    <div class="progress-bar-container" style="width: 100%; height: 6px; background: rgba(255,255,255,0.05);"><div class="progress-bar-fill purple" id="vnc-monitor-rambar" style="width: 45%;"></div></div>
+                                    <div class="progress-bar-container" style="width: 100%;"><div class="progress-bar-fill purple" id="vnc-monitor-rambar" style="width: 45%;"></div></div>
                                 </div>
                             </div>
                         </div>
