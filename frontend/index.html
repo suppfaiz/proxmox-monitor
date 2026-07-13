@@ -71,6 +71,7 @@
                     <li data-target="storage"><a href="#storage"><i class="fa-solid fa-database"></i> <span>Storage</span></a></li>
                     <li data-target="backups"><a href="#backups"><i class="fa-solid fa-shield-halved"></i> <span>Backups</span></a></li>
                     <li data-target="network"><a href="#network"><i class="fa-solid fa-ethernet"></i> <span>Network</span></a></li>
+                    <li data-target="mikrotik"><a href="#mikrotik"><i class="fa-solid fa-route"></i> <span>MikroTik Router</span></a></li>
                     <li data-target="settings"><a href="#settings"><i class="fa-solid fa-sliders"></i> <span>Settings</span></a></li>
                 </ul>
             </nav>
@@ -164,6 +165,13 @@
                             <span class="mini-value" id="mini-vms-count">0 / 0 Active</span>
                         </div>
                     </div>
+                    <div class="mini-card" id="mini-mikrotik-card" style="cursor: pointer;" onclick="window.location.hash='#mikrotik'">
+                        <div class="mini-card-icon"><i class="fa-solid fa-route" style="color: #10b981;"></i></div>
+                        <div class="mini-card-text">
+                            <span class="mini-title">MikroTik Router</span>
+                            <span class="mini-value" id="mini-mikrotik-status">Checking...</span>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- TOP RESOURCE RING GAUGES -->
@@ -248,8 +256,10 @@
                     <div class="card-header">
                         <h3>Real-time Network Traffic</h3>
                         <div class="chart-legend">
-                            <span class="legend-item rx"><span class="dot teal"></span> RX (Download)</span>
-                            <span class="legend-item tx"><span class="dot purple"></span> TX (Upload)</span>
+                            <span class="legend-item rx"><span class="dot teal"></span> PVE RX</span>
+                            <span class="legend-item tx"><span class="dot purple"></span> PVE TX</span>
+                            <span class="legend-item m-rx" style="margin-left: 8px;"><span class="dot green" style="background: #10b981;"></span> Router RX</span>
+                            <span class="legend-item m-tx" style="margin-left: 8px;"><span class="dot orange" style="background: #ff9966;"></span> Router TX</span>
                         </div>
                     </div>
                     <div class="card-body-chart">
@@ -504,6 +514,116 @@
                 </div>
             </section>
 
+            <!-- VIEW: MIKROTIK ROUTER -->
+            <section id="view-mikrotik" class="view-section" style="display: none;">
+                <!-- Header Stats Cards -->
+                <div class="metrics-grid" style="grid-column: span 3; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; width: 100%; margin-bottom: 20px;">
+                    <div class="metric-card glassmorphic">
+                        <div class="metric-header">
+                            <span>Router Status</span>
+                            <i class="fa-solid fa-route" style="color: #10b981;"></i>
+                        </div>
+                        <div class="metric-body">
+                            <h2 id="mikrotik-status-text">Checking...</h2>
+                            <p id="mikrotik-uptime-text" style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">Uptime: --</p>
+                        </div>
+                    </div>
+                    <div class="metric-card glassmorphic">
+                        <div class="metric-header">
+                            <span>CPU Usage</span>
+                            <i class="fa-solid fa-microchip" style="color: #ff9966;"></i>
+                        </div>
+                        <div class="metric-body" style="display: flex; align-items: center; justify-content: space-between;">
+                            <h2 id="mikrotik-cpu-text">--%</h2>
+                            <div style="width: 80px; height: 10px; background: rgba(255,255,255,0.05); border-radius: 5px; overflow: hidden; border: 1px solid var(--border-card);">
+                                <div id="mikrotik-cpu-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #ff9966, #ff5e62); transition: width 0.5s ease;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="metric-card glassmorphic">
+                        <div class="metric-header">
+                            <span>RAM Memory</span>
+                            <i class="fa-solid fa-memory" style="color: var(--color-teal);"></i>
+                        </div>
+                        <div class="metric-body">
+                            <h2 id="mikrotik-ram-text">-- / --</h2>
+                            <p id="mikrotik-ram-pct" style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">0% terpakai</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Router System Info & Storage Card -->
+                <div style="grid-column: span 3; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; width: 100%; margin-bottom: 20px;">
+                    <!-- System Info Card -->
+                    <div class="vm-list-card">
+                        <div class="card-header">
+                            <h3>Spesifikasi Router</h3>
+                        </div>
+                        <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px; font-size: 13px;">
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 8px;">
+                                <span style="color: var(--text-secondary);">System Name</span>
+                                <strong id="mikrotik-spec-name">--</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 8px;">
+                                <span style="color: var(--text-secondary);">Model Hardware</span>
+                                <strong id="mikrotik-spec-model">--</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 8px;">
+                                <span style="color: var(--text-secondary);">OS Version</span>
+                                <strong id="mikrotik-spec-os">--</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-secondary);">IP Connection</span>
+                                <strong id="mikrotik-spec-ip">--</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Storage info card -->
+                    <div class="vm-list-card">
+                        <div class="card-header">
+                            <h3>Router Disk Storage</h3>
+                        </div>
+                        <div style="padding: 16px; display: flex; flex-direction: column; justify-content: center; height: 100%;">
+                            <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px;">
+                                <span style="color: var(--text-secondary);">Kapasitas Penyimpanan</span>
+                                <strong id="mikrotik-disk-text">-- / --</strong>
+                            </div>
+                            <div style="width: 100%; height: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; overflow: hidden; border: 1px solid var(--border-card); margin-bottom: 8px;">
+                                <div id="mikrotik-disk-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--color-teal), #00d2ff); transition: width 0.5s ease;"></div>
+                            </div>
+                            <p id="mikrotik-disk-pct" style="font-size: 11px; color: var(--text-secondary);">0% terpakai</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interface Traffic list -->
+                <div class="vm-list-card" style="grid-column: span 3; width: 100%;">
+                    <div class="card-header">
+                        <h3>Interfaces Traffic & Ports</h3>
+                    </div>
+                    <div class="table-container">
+                        <table class="vm-table">
+                            <thead>
+                                <tr>
+                                    <th>Interface Port</th>
+                                    <th>Status Link</th>
+                                    <th>Download Rate (RX)</th>
+                                    <th>Upload Rate (TX)</th>
+                                    <th>Total Data RX</th>
+                                    <th>Total Data TX</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mikrotik-interfaces-body">
+                                <tr>
+                                    <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 20px;">Memuat status port interfaces...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
             <!-- VIEW: SETTINGS -->
             <section id="view-settings" class="view-section">
                 <div class="vm-list-card" style="max-width: 700px; margin: 0 auto; width: 100%;">
@@ -537,6 +657,27 @@
                                 <label for="settings-token-secret" style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">Proxmox Token Secret</label>
                                 <input type="password" id="settings-token-secret" placeholder="••••••••••••••••" style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-card); border-radius: 8px; padding: 10px 14px; color: var(--text-primary); font-family: inherit; font-size: 14px;">
                                 <span style="font-size: 11px; color: var(--text-muted);">Secret Value UUID Token Anda (tidak akan dibagikan ke client luar backend).</span>
+                            </div>
+                        </div>
+
+                        <!-- MikroTik SNMP Configuration Fields -->
+                        <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 16px; margin-top: 8px;">
+                            <h4 style="font-size: 14px; margin-bottom: 12px; color: var(--color-teal);"><i class="fa-solid fa-route"></i> Konfigurasi MikroTik SNMP</h4>
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                            <label for="settings-mikrotik-ip" style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">Alamat IP MikroTik Router</label>
+                            <input type="text" id="settings-mikrotik-ip" placeholder="192.168.88.1" style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-card); border-radius: 8px; padding: 10px 14px; color: var(--text-primary); font-family: inherit; font-size: 14px;">
+                        </div>
+
+                        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                            <div style="display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 150px;">
+                                <label for="settings-mikrotik-community" style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">SNMP Community</label>
+                                <input type="text" id="settings-mikrotik-community" placeholder="public" style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-card); border-radius: 8px; padding: 10px 14px; color: var(--text-primary); font-family: inherit; font-size: 14px;">
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 6px; width: 120px;">
+                                <label for="settings-mikrotik-port" style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">SNMP Port</label>
+                                <input type="number" id="settings-mikrotik-port" placeholder="161" style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-card); border-radius: 8px; padding: 10px 14px; color: var(--text-primary); font-family: inherit; font-size: 14px;">
                             </div>
                         </div>
 

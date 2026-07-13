@@ -233,6 +233,7 @@ function handleRoute() {
         storage: 'Penyimpanan (Storage Pools)',
         backups: 'Jadwal & Riwayat Backup',
         network: 'Bandwidth & Interfaces',
+        mikrotik: 'Pemantauan Router MikroTik',
         settings: 'Pengaturan Koneksi Proxmox'
     };
     document.getElementById('page-title').textContent = titles[target] || 'Pemantauan Server';
@@ -268,6 +269,9 @@ function triggerRouteUpdate(target) {
             case 'network':
                 fetchNetworkInterfaces();
                 break;
+            case 'mikrotik':
+                fetchMikrotikStats();
+                break;
             case 'settings':
                 fetchSettings();
                 break;
@@ -288,13 +292,21 @@ function initCharts() {
     txGradient.addColorStop(0, 'rgba(157, 78, 221, 0.25)');
     txGradient.addColorStop(1, 'rgba(157, 78, 221, 0.0)');
 
+    const mRxGradient = ctx.createLinearGradient(0, 0, 0, 180);
+    mRxGradient.addColorStop(0, 'rgba(16, 185, 129, 0.25)');
+    mRxGradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+
+    const mTxGradient = ctx.createLinearGradient(0, 0, 0, 180);
+    mTxGradient.addColorStop(0, 'rgba(255, 153, 102, 0.25)');
+    mTxGradient.addColorStop(1, 'rgba(255, 153, 102, 0.0)');
+
     networkChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: Array.from({ length: 20 }, () => ''),
             datasets: [
                 {
-                    label: 'RX (Download)',
+                    label: 'PVE RX',
                     data: Array(20).fill(0),
                     borderColor: '#00F2FE',
                     borderWidth: 2,
@@ -304,11 +316,31 @@ function initCharts() {
                     pointRadius: 0
                 },
                 {
-                    label: 'TX (Upload)',
+                    label: 'PVE TX',
                     data: Array(20).fill(0),
                     borderColor: '#9d4edd',
                     borderWidth: 2,
                     backgroundColor: txGradient,
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 0
+                },
+                {
+                    label: 'Router RX',
+                    data: Array(20).fill(0),
+                    borderColor: '#10b981',
+                    borderWidth: 2,
+                    backgroundColor: mRxGradient,
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 0
+                },
+                {
+                    label: 'Router TX',
+                    data: Array(20).fill(0),
+                    borderColor: '#ff9966',
+                    borderWidth: 2,
+                    backgroundColor: mTxGradient,
                     fill: true,
                     tension: 0.35,
                     pointRadius: 0
@@ -340,7 +372,7 @@ function initCharts() {
             labels: Array.from({ length: 20 }, () => ''),
             datasets: [
                 {
-                    label: 'RX (Download)',
+                    label: 'PVE RX',
                     data: Array(20).fill(0),
                     borderColor: '#00F2FE',
                     borderWidth: 2.5,
@@ -351,11 +383,33 @@ function initCharts() {
                     pointHoverRadius: 5
                 },
                 {
-                    label: 'TX (Upload)',
+                    label: 'PVE TX',
                     data: Array(20).fill(0),
                     borderColor: '#9d4edd',
                     borderWidth: 2.5,
                     backgroundColor: txGradient,
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 2,
+                    pointHoverRadius: 5
+                },
+                {
+                    label: 'Router RX',
+                    data: Array(20).fill(0),
+                    borderColor: '#10b981',
+                    borderWidth: 2.5,
+                    backgroundColor: mRxGradient,
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 2,
+                    pointHoverRadius: 5
+                },
+                {
+                    label: 'Router TX',
+                    data: Array(20).fill(0),
+                    borderColor: '#ff9966',
+                    borderWidth: 2.5,
+                    backgroundColor: mTxGradient,
                     fill: true,
                     tension: 0.35,
                     pointRadius: 2,
@@ -382,19 +436,28 @@ function initCharts() {
     });
 }
 
-function updateCharts(rxHistory, txHistory) {
+function updateCharts(rxHistory, txHistory, mRxHistory, mTxHistory) {
     if (rxHistory && txHistory) {
         if (networkChart) {
             networkChart.data.datasets[0].data = rxHistory;
             networkChart.data.datasets[1].data = txHistory;
+            if (mRxHistory && mTxHistory && networkChart.data.datasets[2]) {
+                networkChart.data.datasets[2].data = mRxHistory;
+                networkChart.data.datasets[3].data = mTxHistory;
+            }
             networkChart.update('none');
         }
         if (largeNetworkChart) {
             largeNetworkChart.data.datasets[0].data = rxHistory;
             largeNetworkChart.data.datasets[1].data = txHistory;
+            if (mRxHistory && mTxHistory && largeNetworkChart.data.datasets[2]) {
+                largeNetworkChart.data.datasets[2].data = mRxHistory;
+                largeNetworkChart.data.datasets[3].data = mTxHistory;
+            }
             largeNetworkChart.update('none');
         }
-    } else {
+    }
+} else {
         const dummyRx = Math.floor(10 + Math.random() * 20);
         const dummyTx = Math.floor(5 + Math.random() * 10);
         
@@ -543,12 +606,30 @@ async function fetchNodeStatus() {
         elMiniLoadAverage.textContent = node.loadavg ? node.loadavg.join(', ') : '0.00, 0.00, 0.00';
         elMiniIoWait.textContent = `${node.iowait || '0.00'}%`;
         
+        const elMiniMikrotikStatus = document.getElementById('mini-mikrotik-status');
+        if (elMiniMikrotikStatus && node.mikrotikNetwork) {
+            if (node.mikrotikNetwork.online) {
+                elMiniMikrotikStatus.innerHTML = `<span style="color: #10b981; font-weight: 500;">Online (${node.mikrotikNetwork.cpu}%)</span>`;
+            } else {
+                elMiniMikrotikStatus.innerHTML = '<span style="color: #ef4444; font-weight: 500;">Offline</span>';
+            }
+        }
+        
         if (node.cpu * 100 > 90 || ramPercent > 90) {
             showAlert(`WARNING: High server usage! CPU: ${Math.round(node.cpu * 100)}%, RAM: ${Math.round(ramPercent)}%`);
         }
         
         if (node.network && node.network.rxHistory) {
-            updateCharts(node.network.rxHistory, node.network.txHistory);
+            if (node.mikrotikNetwork) {
+                updateCharts(
+                    node.network.rxHistory,
+                    node.network.txHistory,
+                    node.mikrotikNetwork.rxHistory,
+                    node.mikrotikNetwork.txHistory
+                );
+            } else {
+                updateCharts(node.network.rxHistory, node.network.txHistory);
+            }
         } else {
             updateCharts(null, null);
         }
@@ -981,6 +1062,110 @@ async function fetchNetworkInterfaces() {
     }
 }
 
+async function fetchMikrotikStats() {
+    try {
+        const response = await authenticatedFetch(`${BACKEND_URL}/api/mikrotik/stats`);
+        if (!response.ok) throw new Error();
+        const data = await response.json();
+        
+        const elStatusText = document.getElementById('mikrotik-status-text');
+        const elUptimeText = document.getElementById('mikrotik-uptime-text');
+        const elCpuText = document.getElementById('mikrotik-cpu-text');
+        const elCpuBar = document.getElementById('mikrotik-cpu-bar');
+        const elRamText = document.getElementById('mikrotik-ram-text');
+        const elRamPct = document.getElementById('mikrotik-ram-pct');
+        
+        const elSpecName = document.getElementById('mikrotik-spec-name');
+        const elSpecModel = document.getElementById('mikrotik-spec-model');
+        const elSpecOs = document.getElementById('mikrotik-spec-os');
+        const elSpecIp = document.getElementById('mikrotik-spec-ip');
+        
+        const elDiskText = document.getElementById('mikrotik-disk-text');
+        const elDiskBar = document.getElementById('mikrotik-disk-bar');
+        const elDiskPct = document.getElementById('mikrotik-disk-pct');
+        
+        const elInterfacesBody = document.getElementById('mikrotik-interfaces-body');
+
+        if (!data.online) {
+            elStatusText.innerHTML = '<span style="color: #ef4444;"><i class="fa-solid fa-circle-xmark"></i> Offline</span>';
+            elUptimeText.textContent = 'Uptime: --';
+            return;
+        }
+
+        // 1. Status & Uptime
+        elStatusText.innerHTML = '<span style="color: #10b981;"><i class="fa-solid fa-circle-check"></i> Online</span>';
+        elUptimeText.textContent = `Uptime: ${formatUptime(data.identity.uptime)}`;
+
+        // 2. CPU
+        elCpuText.textContent = `${data.resources.cpu}%`;
+        elCpuBar.style.width = `${data.resources.cpu}%`;
+
+        // 3. RAM Memory
+        const ramUsedStr = formatBytes(data.resources.ramUsed, 1);
+        const ramTotalStr = formatBytes(data.resources.ramTotal, 1);
+        elRamText.textContent = `${ramUsedStr} / ${ramTotalStr}`;
+        const ramPctVal = data.resources.ramTotal > 0 ? Math.round((data.resources.ramUsed / data.resources.ramTotal) * 100) : 0;
+        elRamPct.textContent = `${ramPctVal}% terpakai`;
+
+        // 4. Specs
+        elSpecName.textContent = data.identity.name;
+        elSpecModel.textContent = data.identity.model;
+        elSpecOs.textContent = data.identity.version;
+        elSpecIp.textContent = data.specIp || BACKEND_URL.replace(/:\d+/, '').replace('http://', '').replace('https://', '');
+
+        // 5. Disk Storage
+        const diskUsedStr = formatBytes(data.resources.diskUsed, 1);
+        const diskTotalStr = formatBytes(data.resources.diskTotal, 1);
+        elDiskText.textContent = `${diskUsedStr} / ${diskTotalStr}`;
+        const diskPctVal = data.resources.diskTotal > 0 ? Math.round((data.resources.diskUsed / data.resources.diskTotal) * 100) : 0;
+        elDiskBar.style.width = `${diskPctVal}%`;
+        elDiskPct.textContent = `${diskPctVal}% terpakai`;
+
+        // 6. Interfaces table
+        if (data.interfaces && data.interfaces.length > 0) {
+            elInterfacesBody.innerHTML = '';
+            data.interfaces.forEach(iface => {
+                const tr = document.createElement('tr');
+                
+                const statusBadge = iface.status === 'up' 
+                    ? '<span class="status-badge online"><span class="dot"></span> UP</span>' 
+                    : '<span class="status-badge offline"><span class="dot"></span> DOWN</span>';
+
+                // Display RX / TX rates nicely
+                const rxRateFormatted = formatBandwidth(iface.rxRate);
+                const txRateFormatted = formatBandwidth(iface.txRate);
+                const rxTotalFormatted = formatBytes(iface.rxBytes, 2);
+                const txTotalFormatted = formatBytes(iface.txBytes, 2);
+
+                tr.innerHTML = `
+                    <td><strong>${iface.name}</strong></td>
+                    <td>${statusBadge}</td>
+                    <td style="color: #10b981;"><i class="fa-solid fa-arrow-down" style="font-size:10px; margin-right:4px;"></i> ${rxRateFormatted}</td>
+                    <td style="color: #ff9966;"><i class="fa-solid fa-arrow-up" style="font-size:10px; margin-right:4px;"></i> ${txRateFormatted}</td>
+                    <td style="font-size:11px; color:var(--text-secondary);">${rxTotalFormatted}</td>
+                    <td style="font-size:11px; color:var(--text-secondary);">${txTotalFormatted}</td>
+                `;
+                elInterfacesBody.appendChild(tr);
+            });
+        } else {
+            elInterfacesBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">Tidak ada data interfaces.</td></tr>';
+        }
+    } catch (err) {
+        addConsoleLog(`Gagal mengambil data MikroTik: ${err.message}`, 'error');
+    }
+}
+
+function formatBandwidth(bytesPerSec) {
+    const bitsPerSec = bytesPerSec * 8;
+    if (bitsPerSec >= 1000000) {
+        return `${(bitsPerSec / 1000000).toFixed(2)} Mb/s`;
+    }
+    if (bitsPerSec >= 1000) {
+        return `${(bitsPerSec / 1000).toFixed(1)} Kb/s`;
+    }
+    return `${bitsPerSec} b/s`;
+}
+
 async function fetchTasksHistory() {
     try {
         const response = await authenticatedFetch(`${BACKEND_URL}/api/tasks`);
@@ -1023,6 +1208,11 @@ async function fetchSettings() {
         elSettingsApiUrl.value = settings.apiUrl;
         elSettingsTokenId.value = settings.tokenId;
         elSettingsTokenSecret.value = settings.tokenSecret;
+        
+        // Populate MikroTik configuration
+        document.getElementById('settings-mikrotik-ip').value = settings.mikrotikIp || '';
+        document.getElementById('settings-mikrotik-community').value = settings.mikrotikCommunity || '';
+        document.getElementById('settings-mikrotik-port').value = settings.mikrotikPort || 161;
         
         toggleCredentialsFields(settings.demoMode);
     } catch (e) {
@@ -1349,7 +1539,10 @@ elSettingsForm.addEventListener('submit', async (e) => {
         demoMode: elSettingsDemoMode.checked,
         apiUrl: elSettingsApiUrl.value,
         tokenId: elSettingsTokenId.value,
-        tokenSecret: elSettingsTokenSecret.value
+        tokenSecret: elSettingsTokenSecret.value,
+        mikrotikIp: document.getElementById('settings-mikrotik-ip').value,
+        mikrotikCommunity: document.getElementById('settings-mikrotik-community').value,
+        mikrotikPort: parseInt(document.getElementById('settings-mikrotik-port').value) || 161
     };
     
     addConsoleLog('Menyimpan pengaturan baru ke backend...', 'info');
@@ -1478,6 +1671,8 @@ function setupPoller() {
                 fetchBackupsData();
             } else if (currentActiveRoute === 'network') {
                 fetchNetworkInterfaces();
+            } else if (currentActiveRoute === 'mikrotik') {
+                fetchMikrotikStats();
             }
         }
     }, POLL_INTERVAL);

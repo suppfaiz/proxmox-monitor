@@ -3,6 +3,7 @@ const cors = require('cors');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const snmp = require('net-snmp');
 require('dotenv').config();
 
 const app = express();
@@ -20,11 +21,12 @@ if (process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0') {
   });
 }
 
-// Generate random session token on server start
+// Generate secure session token dynamically on boot
 const crypto = require('crypto');
-let sessionToken = crypto.randomBytes(32).toString('hex');
+const sessionToken = crypto.randomBytes(32).toString('hex');
+console.log(`Generated Cryptographic Session Token: ${sessionToken}`);
 
-// Authentication Token Validator Middleware
+// Middleware to authenticate Bearer tokens for API endpoints
 const authenticateToken = (req, res, next) => {
   // Allow checking status and logging in without token
   if (req.path === '/api/status' || req.path === '/api/login') {
@@ -54,7 +56,10 @@ let config = {
   tokenId: process.env.PROXMOX_TOKEN_ID || 'root@pam!dashboard',
   tokenSecret: process.env.PROXMOX_TOKEN_SECRET || '',
   dashboardUsername: process.env.DASHBOARD_USERNAME || 'admin',
-  dashboardPassword: process.env.DASHBOARD_PASSWORD || 'admin123'
+  dashboardPassword: process.env.DASHBOARD_PASSWORD || 'admin123',
+  mikrotikIp: process.env.MIKROTIK_IP || '192.168.88.1',
+  mikrotikCommunity: process.env.MIKROTIK_SNMP_COMMUNITY || 'public',
+  mikrotikPort: parseInt(process.env.MIKROTIK_SNMP_PORT) || 161
 };
 
 // Helper for Proxmox API Requests using dynamic config values
@@ -96,9 +101,298 @@ NODE_TLS_REJECT_UNAUTHORIZED=0
 # Kredensial Login Dashboard Website
 DASHBOARD_USERNAME=${config.dashboardUsername}
 DASHBOARD_PASSWORD=${config.dashboardPassword}
+
+# MikroTik Router SNMP Configuration
+MIKROTIK_IP=${newConfig.mikrotikIp || '192.168.88.1'}
+MIKROTIK_SNMP_COMMUNITY=${newConfig.mikrotikCommunity || 'public'}
+MIKROTIK_SNMP_PORT=${newConfig.mikrotikPort || 161}
 `;
   fs.writeFileSync(envPath, envContent, 'utf8');
 };
+
+// --- MIKROTIK SNMP MONITORING SYSTEM ---
+let cachedMikrotikStats = {
+  online: false,
+  identity: { name: 'MikroTik', uptime: 0, model: 'Unknown', version: 'Unknown' },
+  resources: { cpu: 0, ramUsed: 0, ramTotal: 0, diskUsed: 0, diskTotal: 0 },
+  interfaces: [],
+  network: { rx: 0, tx: 0 }
+};
+let cachedMikrotikRxHistory = Array.from({ length: 20 }, () => Math.floor(100 + Math.random() * 80));
+let cachedMikrotikTxHistory = Array.from({ length: 20 }, () => Math.floor(10 + Math.random() * 15));
+
+const OIDS = {
+  sysName: '1.3.6.1.2.1.1.5.0',
+  sysUpTime: '1.3.6.1.2.1.1.3.0',
+  sysDescr: '1.3.6.1.2.1.1.1.0',
+  cpuLoad: '1.3.6.1.4.1.14988.1.1.3.10.0',
+  ramAllocUnits: '1.3.6.1.2.1.25.2.3.1.4.65536',
+  ramTotalSize: '1.3.6.1.2.1.25.2.3.1.5.65536',
+  ramUsedSize: '1.3.6.1.2.1.25.2.3.1.6.65536',
+  diskAllocUnits: '1.3.6.1.2.1.25.2.3.1.4.131072',
+  diskTotalSize: '1.3.6.1.2.1.25.2.3.1.5.131072',
+  diskUsedSize: '1.3.6.1.2.1.25.2.3.1.6.131072'
+};
+
+let lastSnmpTime = 0;
+let lastInterfaceBytes = {}; // Maps index -> { rxBytes, txBytes }
+
+function snmpGet(session, oids) {
+  return new Promise((resolve, reject) => {
+    session.get(oids, (error, varbinds) => {
+      if (error) reject(error);
+      else resolve(varbinds);
+    });
+  });
+}
+
+function snmpSubtree(session, oid) {
+  return new Promise((resolve, reject) => {
+    const results = [];
+    session.subtree(oid, (varbinds) => {
+      for (let i = 0; i < varbinds.length; i++) {
+        if (!snmp.isVarbindError(varbinds[i])) {
+          results.push(varbinds[i]);
+        }
+      }
+    }, (error) => {
+      if (error) reject(error);
+      else resolve(results);
+    });
+  });
+}
+
+function walkInterfaces(session) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const descrs = await snmpSubtree(session, '1.3.6.1.2.1.2.2.1.2');
+      const statuses = await snmpSubtree(session, '1.3.6.1.2.1.2.2.1.8');
+      const inOctets = await snmpSubtree(session, '1.3.6.1.2.1.2.2.1.10');
+      const outOctets = await snmpSubtree(session, '1.3.6.1.2.1.2.2.1.16');
+
+      const interfaces = [];
+      const now = Date.now();
+      const duration = lastSnmpTime ? (now - lastSnmpTime) / 1000 : 0;
+
+      const dataMap = {};
+      descrs.forEach(vb => {
+        const parts = vb.oid.split('.');
+        const index = parts[parts.length - 1];
+        dataMap[index] = { name: vb.value.toString(), status: 'down', rxBytes: 0, txBytes: 0 };
+      });
+
+      statuses.forEach(vb => {
+        const parts = vb.oid.split('.');
+        const index = parts[parts.length - 1];
+        if (dataMap[index]) {
+          dataMap[index].status = parseInt(vb.value) === 1 ? 'up' : 'down';
+        }
+      });
+
+      inOctets.forEach(vb => {
+        const parts = vb.oid.split('.');
+        const index = parts[parts.length - 1];
+        if (dataMap[index]) {
+          dataMap[index].rxBytes = parseInt(vb.value);
+        }
+      });
+
+      outOctets.forEach(vb => {
+        const parts = vb.oid.split('.');
+        const index = parts[parts.length - 1];
+        if (dataMap[index]) {
+          dataMap[index].txBytes = parseInt(vb.value);
+        }
+      });
+
+      for (const index in dataMap) {
+        const current = dataMap[index];
+        const last = lastInterfaceBytes[index];
+
+        let rxRate = 0;
+        let txRate = 0;
+
+        if (last && duration > 0) {
+          const rxDiff = current.rxBytes - last.rxBytes;
+          const txDiff = current.txBytes - last.txBytes;
+          if (rxDiff >= 0) rxRate = Math.round(rxDiff / duration);
+          if (txDiff >= 0) txRate = Math.round(txDiff / duration);
+        }
+
+        current.rxRate = rxRate;
+        current.txRate = txRate;
+        lastInterfaceBytes[index] = { rxBytes: current.rxBytes, txBytes: current.txBytes };
+        interfaces.push(current);
+      }
+
+      lastSnmpTime = now;
+      resolve(interfaces);
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+function pollRealMikrotikSNMP() {
+  return new Promise((resolve, reject) => {
+    const session = snmp.createSession(config.mikrotikIp, config.mikrotikCommunity, {
+      port: config.mikrotikPort,
+      timeout: 1500,
+      retries: 1
+    });
+
+    const oidsToGet = [
+      OIDS.sysName,
+      OIDS.sysUpTime,
+      OIDS.sysDescr,
+      OIDS.cpuLoad,
+      OIDS.ramAllocUnits,
+      OIDS.ramTotalSize,
+      OIDS.ramUsedSize,
+      OIDS.diskAllocUnits,
+      OIDS.diskTotalSize,
+      OIDS.diskUsedSize
+    ];
+
+    session.get(oidsToGet, async (error, varbinds) => {
+      if (error) {
+        session.close();
+        return reject(error);
+      }
+
+      try {
+        const results = {};
+        for (let i = 0; i < varbinds.length; i++) {
+          results[varbinds[i].oid] = varbinds[i].value;
+        }
+
+        const rawName = results[OIDS.sysName];
+        const name = rawName ? rawName.toString() : 'MikroTik';
+        
+        const rawUptime = results[OIDS.sysUpTime];
+        const uptime = rawUptime ? Math.floor(parseInt(rawUptime) / 100) : 0;
+        
+        const rawDescr = results[OIDS.sysDescr];
+        const descr = rawDescr ? rawDescr.toString() : '';
+        
+        let version = 'RouterOS';
+        let model = 'MikroTik Router';
+        if (descr) {
+          const verMatch = descr.match(/RouterOS\s+([^\s]+)/i);
+          if (verMatch) version = `RouterOS ${verMatch[1]}`;
+          const modelMatch = descr.match(/board\s+([^\s\n\r]+)/i) || descr.match(/(RB[^\s]+|CCR[^\s]+|CRS[^\s]+|hap[^\s]+)/i);
+          if (modelMatch) model = modelMatch[1];
+        }
+
+        const cpu = results[OIDS.cpuLoad] ? parseInt(results[OIDS.cpuLoad].toString()) : 0;
+        
+        const ramAlloc = results[OIDS.ramAllocUnits] ? parseInt(results[OIDS.ramAllocUnits].toString()) : 1;
+        const ramTotal = results[OIDS.ramTotalSize] ? parseInt(results[OIDS.ramTotalSize].toString()) * ramAlloc : 0;
+        const ramUsed = results[OIDS.ramUsedSize] ? parseInt(results[OIDS.ramUsedSize].toString()) * ramAlloc : 0;
+
+        const diskAlloc = results[OIDS.diskAllocUnits] ? parseInt(results[OIDS.diskAllocUnits].toString()) : 1;
+        const diskTotal = results[OIDS.diskTotalSize] ? parseInt(results[OIDS.diskTotalSize].toString()) * diskAlloc : 0;
+        const diskUsed = results[OIDS.diskUsedSize] ? parseInt(results[OIDS.diskUsedSize].toString()) * diskAlloc : 0;
+
+        const interfaces = await walkInterfaces(session);
+        session.close();
+        
+        let wanInterface = interfaces.find(iface => iface.name.toLowerCase().includes('wan') || iface.name.toLowerCase().includes('ether1'));
+        if (!wanInterface) wanInterface = interfaces[0];
+
+        const rxRate = wanInterface ? wanInterface.rxRate : 0;
+        const txRate = wanInterface ? wanInterface.txRate : 0;
+
+        const wanRxMbps = Math.round((rxRate * 8) / (1024 * 1024));
+        const wanTxMbps = Math.round((txRate * 8) / (1024 * 1024));
+        
+        cachedMikrotikRxHistory.push(wanRxMbps);
+        cachedMikrotikTxHistory.push(wanTxMbps);
+        if (cachedMikrotikRxHistory.length > 20) {
+          cachedMikrotikRxHistory.shift();
+          cachedMikrotikTxHistory.shift();
+        }
+
+        resolve({
+          online: true,
+          identity: { name, uptime, model, version },
+          resources: { cpu, ramUsed, ramTotal, diskUsed, diskTotal },
+          interfaces,
+          network: { rx: rxRate, tx: txRate }
+        });
+      } catch (err) {
+        session.close();
+        reject(err);
+      }
+    });
+  });
+}
+
+let mockMikrotikUptime = 86400 * 5;
+function simulateMikrotikStats() {
+  mockMikrotikUptime += 3;
+  const cpu = Math.floor(5 + Math.random() * 12);
+  const ramTotal = 1024 * 1024 * 1024;
+  const ramUsed = Math.floor(256 * 1024 * 1024 + (Math.random() - 0.5) * 8 * 1024 * 1024);
+  const diskTotal = 1024 * 1024 * 1024;
+  const diskUsed = 68 * 1024 * 1024;
+
+  const rx1 = Math.floor(15 * 1024 * 1024 + Math.random() * 20 * 1024 * 1024);
+  const tx1 = Math.floor(1.5 * 1024 * 1024 + Math.random() * 3 * 1024 * 1024);
+  const rx2 = Math.floor(5 * 1024 * 1024 + Math.random() * 10 * 1024 * 1024);
+  const tx2 = Math.floor(4 * 1024 * 1024 + Math.random() * 8 * 1024 * 1024);
+
+  const interfaces = [
+    { name: 'ether1 (WAN)', status: 'up', rxBytes: 15482938102, txBytes: 2548291039, rxRate: rx1, txRate: tx1 },
+    { name: 'ether2 (LAN-PVE)', status: 'up', rxBytes: 8593029102, txBytes: 12593029103, rxRate: rx2, txRate: tx2 },
+    { name: 'ether3 (Local-WiFi)', status: 'up', rxBytes: 3204910294, txBytes: 9482910293, rxRate: Math.floor(rx2 * 0.4), txRate: Math.floor(tx2 * 0.4) },
+    { name: 'ether4', status: 'down', rxBytes: 0, txBytes: 0, rxRate: 0, txRate: 0 },
+    { name: 'sfp-plus1 (10G)', status: 'down', rxBytes: 0, txBytes: 0, rxRate: 0, txRate: 0 },
+    { name: 'bridge', status: 'up', rxBytes: 11797939396, txBytes: 22075939396, rxRate: rx2 + Math.floor(rx2 * 0.4), txRate: tx2 + Math.floor(tx2 * 0.4) }
+  ];
+
+  const wanRxMbps = Math.round((rx1 * 8) / (1024 * 1024));
+  const wanTxMbps = Math.round((tx1 * 8) / (1024 * 1024));
+  
+  cachedMikrotikRxHistory.push(wanRxMbps);
+  cachedMikrotikTxHistory.push(wanTxMbps);
+  if (cachedMikrotikRxHistory.length > 20) {
+    cachedMikrotikRxHistory.shift();
+    cachedMikrotikTxHistory.shift();
+  }
+
+  cachedMikrotikStats = {
+    online: true,
+    identity: {
+      name: 'MikroTik-RB5009',
+      uptime: mockMikrotikUptime,
+      model: 'RB5009UG+S+IN',
+      version: 'RouterOS v7.12.1 (stable)'
+    },
+    resources: { cpu, ramUsed, ramTotal, diskUsed, diskTotal },
+    interfaces,
+    network: { rx: rx1, tx: tx1 }
+  };
+}
+
+// Start Background SNMP Poller
+function startMikrotikPoller() {
+  setInterval(async () => {
+    if (config.demoMode) {
+      simulateMikrotikStats();
+      return;
+    }
+    try {
+      const stats = await pollRealMikrotikSNMP();
+      cachedMikrotikStats = stats;
+    } catch (err) {
+      cachedMikrotikStats.online = false;
+    }
+  }, 3000);
+}
+
+// Start on Boot
+startMikrotikPoller();
 
 // --- SIMULATED DATA GENERATOR (DEMO MODE) ---
 let demoNetworkRxHistory = Array.from({ length: 20 }, () => Math.floor(50 + Math.random() * 50));
@@ -166,6 +460,14 @@ const getMockNodeStatus = () => {
       rxHistory: demoNetworkRxHistory,
       txHistory: demoNetworkTxHistory
     },
+    mikrotikNetwork: {
+      online: cachedMikrotikStats.online,
+      cpu: cachedMikrotikStats.resources.cpu,
+      rx: Math.round((cachedMikrotikStats.network.rx * 8) / (1024 * 1024)),
+      tx: Math.round((cachedMikrotikStats.network.tx * 8) / (1024 * 1024)),
+      rxHistory: cachedMikrotikRxHistory,
+      txHistory: cachedMikrotikTxHistory
+    },
     pveVersion: 'Proxmox VE 8.1.4',
     kversion: 'Linux 6.5.11-7-pve #1 SMP PREEMPT_DYNAMIC PVE 6.5.11-7 (2023-12-05T13:30Z)',
     // Detailed stats for completeness
@@ -218,13 +520,16 @@ app.get('/api/settings', (req, res) => {
     demoMode: config.demoMode,
     apiUrl: config.apiUrl,
     tokenId: config.tokenId,
-    tokenSecret: config.tokenSecret ? '••••••••••••••••' : ''
+    tokenSecret: config.tokenSecret ? '••••••••••••••••' : '',
+    mikrotikIp: config.mikrotikIp,
+    mikrotikCommunity: config.mikrotikCommunity,
+    mikrotikPort: config.mikrotikPort
   });
 });
 
 // Update Settings dynamically from the frontend
 app.post('/api/settings', async (req, res) => {
-  const { demoMode, apiUrl, tokenId, tokenSecret } = req.body;
+  const { demoMode, apiUrl, tokenId, tokenSecret, mikrotikIp, mikrotikCommunity, mikrotikPort } = req.body;
   const originalConfig = { ...config };
 
   config.demoMode = demoMode === true;
@@ -234,6 +539,11 @@ app.post('/api/settings', async (req, res) => {
   if (tokenSecret && tokenSecret !== '••••••••••••••••') {
     config.tokenSecret = tokenSecret;
   }
+
+  // Update MikroTik configs
+  if (mikrotikIp) config.mikrotikIp = mikrotikIp;
+  if (mikrotikCommunity) config.mikrotikCommunity = mikrotikCommunity;
+  if (mikrotikPort) config.mikrotikPort = parseInt(mikrotikPort) || 161;
 
   if (!config.demoMode) {
     try {
@@ -261,6 +571,9 @@ app.post('/api/settings', async (req, res) => {
   }
 });
 
+let prodNetworkRxHistory = Array.from({ length: 20 }, () => Math.floor(50 + Math.random() * 50));
+let prodNetworkTxHistory = Array.from({ length: 20 }, () => Math.floor(20 + Math.random() * 30));
+
 // Get Node summary status
 app.get('/api/node-status', async (req, res) => {
   if (config.demoMode) {
@@ -281,6 +594,15 @@ app.get('/api/node-status', async (req, res) => {
     const versionResponse = await proxmoxRequest('GET', '/version');
     const pveVersion = versionResponse.data.version || 'Proxmox VE';
 
+    const rx = Math.floor(Math.random() * 50 + 20);
+    const tx = Math.floor(Math.random() * 20 + 10);
+    prodNetworkRxHistory.push(rx);
+    prodNetworkTxHistory.push(tx);
+    if (prodNetworkRxHistory.length > 20) {
+      prodNetworkRxHistory.shift();
+      prodNetworkTxHistory.shift();
+    }
+
     res.json({
       node: targetNode,
       status: nodes[0].status,
@@ -295,8 +617,18 @@ app.get('/api/node-status', async (req, res) => {
         total: status.rootfs.total
       },
       network: {
-        rx: Math.floor(Math.random() * 50 + 20),
-        tx: Math.floor(Math.random() * 20 + 10)
+        rx,
+        tx,
+        rxHistory: prodNetworkRxHistory,
+        txHistory: prodNetworkTxHistory
+      },
+      mikrotikNetwork: {
+        online: cachedMikrotikStats.online,
+        cpu: cachedMikrotikStats.resources.cpu,
+        rx: Math.round((cachedMikrotikStats.network.rx * 8) / (1024 * 1024)),
+        tx: Math.round((cachedMikrotikStats.network.tx * 8) / (1024 * 1024)),
+        rxHistory: cachedMikrotikRxHistory,
+        txHistory: cachedMikrotikTxHistory
       },
       pveVersion: `${pveVersion}`,
       kversion: status.kversion || 'Linux Kernel',
@@ -310,6 +642,11 @@ app.get('/api/node-status', async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch Proxmox Node Status', details: error.message });
   }
+});
+
+// Get MikroTik router SNMP stats
+app.get('/api/mikrotik/stats', (req, res) => {
+  res.json(cachedMikrotikStats);
 });
 
 // Get detailed list of all nodes in cluster
