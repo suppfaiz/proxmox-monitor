@@ -287,20 +287,20 @@ function initCharts() {
     const ctx = document.getElementById('networkChart').getContext('2d');
     
     const rxGradient = ctx.createLinearGradient(0, 0, 0, 180);
-    rxGradient.addColorStop(0, 'rgba(0, 242, 254, 0.25)');
-    rxGradient.addColorStop(1, 'rgba(0, 242, 254, 0.0)');
+    rxGradient.addColorStop(0, 'rgba(0, 0, 0, 0.05)');
+    rxGradient.addColorStop(1, 'rgba(0, 0, 0, 0.0)');
 
     const txGradient = ctx.createLinearGradient(0, 0, 0, 180);
-    txGradient.addColorStop(0, 'rgba(157, 78, 221, 0.25)');
-    txGradient.addColorStop(1, 'rgba(157, 78, 221, 0.0)');
+    txGradient.addColorStop(0, 'rgba(102, 102, 102, 0.02)');
+    txGradient.addColorStop(1, 'rgba(102, 102, 102, 0.0)');
 
     const mRxGradient = ctx.createLinearGradient(0, 0, 0, 180);
-    mRxGradient.addColorStop(0, 'rgba(16, 185, 129, 0.25)');
-    mRxGradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+    mRxGradient.addColorStop(0, 'rgba(0, 0, 0, 0.05)');
+    mRxGradient.addColorStop(1, 'rgba(0, 0, 0, 0.0)');
 
     const mTxGradient = ctx.createLinearGradient(0, 0, 0, 180);
-    mTxGradient.addColorStop(0, 'rgba(255, 153, 102, 0.25)');
-    mTxGradient.addColorStop(1, 'rgba(255, 153, 102, 0.0)');
+    mTxGradient.addColorStop(0, 'rgba(102, 102, 102, 0.02)');
+    mTxGradient.addColorStop(1, 'rgba(102, 102, 102, 0.0)');
 
     // 1. Proxmox VE main chart
     networkChart = new Chart(ctx, {
@@ -311,7 +311,7 @@ function initCharts() {
                 {
                     label: 'PVE RX',
                     data: Array(20).fill(0),
-                    borderColor: '#00F2FE',
+                    borderColor: '#000000',
                     borderWidth: 2,
                     backgroundColor: rxGradient,
                     fill: true,
@@ -321,8 +321,9 @@ function initCharts() {
                 {
                     label: 'PVE TX',
                     data: Array(20).fill(0),
-                    borderColor: '#9d4edd',
+                    borderColor: '#666666',
                     borderWidth: 2,
+                    borderDash: [4, 4],
                     backgroundColor: txGradient,
                     fill: true,
                     tension: 0.35,
@@ -337,9 +338,9 @@ function initCharts() {
             scales: {
                 x: { grid: { display: false }, ticks: { display: false } },
                 y: {
-                    grid: { color: 'rgba(255, 255, 255, 0.04)' },
+                    grid: { color: '#e5e7eb' },
                     ticks: {
-                        color: '#9ca3af',
+                        color: '#4b5563',
                         font: { family: 'Outfit', size: 9 },
                         callback: function(value) { return value + ' Mb/s'; }
                     }
@@ -358,7 +359,7 @@ function initCharts() {
                 {
                     label: 'Router RX',
                     data: Array(20).fill(0),
-                    borderColor: '#10b981',
+                    borderColor: '#000000',
                     borderWidth: 2,
                     backgroundColor: mRxGradient,
                     fill: true,
@@ -368,8 +369,9 @@ function initCharts() {
                 {
                     label: 'Router TX',
                     data: Array(20).fill(0),
-                    borderColor: '#ff9966',
+                    borderColor: '#666666',
                     borderWidth: 2,
+                    borderDash: [4, 4],
                     backgroundColor: mTxGradient,
                     fill: true,
                     tension: 0.35,
@@ -384,9 +386,9 @@ function initCharts() {
             scales: {
                 x: { grid: { display: false }, ticks: { display: false } },
                 y: {
-                    grid: { color: 'rgba(255, 255, 255, 0.04)' },
+                    grid: { color: '#e5e7eb' },
                     ticks: {
-                        color: '#9ca3af',
+                        color: '#4b5563',
                         font: { family: 'Outfit', size: 9 },
                         callback: function(value) { return value + ' Mb/s'; }
                     }
@@ -405,7 +407,7 @@ function initCharts() {
                 {
                     label: 'PVE RX',
                     data: Array(20).fill(0),
-                    borderColor: '#00F2FE',
+                    borderColor: '#000000',
                     borderWidth: 2.5,
                     backgroundColor: rxGradient,
                     fill: true,
@@ -416,8 +418,9 @@ function initCharts() {
                 {
                     label: 'PVE TX',
                     data: Array(20).fill(0),
-                    borderColor: '#9d4edd',
+                    borderColor: '#666666',
                     borderWidth: 2.5,
+                    borderDash: [4, 4],
                     backgroundColor: txGradient,
                     fill: true,
                     tension: 0.35,
@@ -433,9 +436,9 @@ function initCharts() {
             scales: {
                 x: { grid: { display: false }, ticks: { display: false } },
                 y: {
-                    grid: { color: 'rgba(255, 255, 255, 0.04)' },
+                    grid: { color: '#e5e7eb' },
                     ticks: {
-                        color: '#9ca3af',
+                        color: '#4b5563',
                         font: { family: 'Outfit', size: 10 },
                         callback: function(value) { return value + ' Mb/s'; }
                     }
@@ -454,7 +457,7 @@ function initCharts() {
                 {
                     label: 'WAN RX',
                     data: Array(20).fill(0),
-                    borderColor: '#10b981',
+                    borderColor: '#000000',
                     borderWidth: 2.5,
                     backgroundColor: mRxGradient,
                     fill: true,
@@ -465,8 +468,9 @@ function initCharts() {
                 {
                     label: 'WAN TX',
                     data: Array(20).fill(0),
-                    borderColor: '#ff9966',
+                    borderColor: '#666666',
                     borderWidth: 2.5,
+                    borderDash: [4, 4],
                     backgroundColor: mTxGradient,
                     fill: true,
                     tension: 0.35,
@@ -482,9 +486,9 @@ function initCharts() {
             scales: {
                 x: { grid: { display: false }, ticks: { display: false } },
                 y: {
-                    grid: { color: 'rgba(255, 255, 255, 0.04)' },
+                    grid: { color: '#e5e7eb' },
                     ticks: {
-                        color: '#9ca3af',
+                        color: '#4b5563',
                         font: { family: 'Outfit', size: 10 },
                         callback: function(value) { return value + ' Mb/s'; }
                     }

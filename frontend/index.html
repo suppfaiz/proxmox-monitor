@@ -16,30 +16,30 @@
 <body>
     <!-- Login Screen Overlay -->
     <div class="login-overlay" id="login-overlay">
-        <div class="login-card" style="width: 400px; max-width: 90%; background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 20px; padding: 32px; backdrop-filter: var(--blur-card); box-shadow: 0 10px 40px rgba(0,0,0,0.5); text-align: center;">
+        <div class="login-card" style="width: 400px; max-width: 90%; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 32px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); text-align: center;">
             <div class="login-header" style="margin-bottom: 24px;">
                 <div class="logo-icon" style="font-size: 32px; margin-bottom: 12px; display: inline-block;">
-                    <i class="fa-solid fa-server"></i>
+                    <i class="fa-solid fa-server" style="color: #000000;"></i>
                 </div>
-                <h2 style="font-size: 20px; font-weight: 800; letter-spacing: 0.5px; color: var(--text-primary);">PROXMOX <span style="color: var(--color-teal); font-weight: 400;">DASHBOARD</span></h2>
+                <h2 style="font-size: 20px; font-weight: 800; letter-spacing: 0.5px; color: #000000;">PROXMOX DASHBOARD</h2>
                 <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Masukkan kredensial untuk mengakses panel pemantauan</p>
             </div>
             
             <form id="login-form" style="text-align: left; display: flex; flex-direction: column; gap: 16px;">
                 <div class="form-group" style="display: flex; flex-direction: column; gap: 8px;">
-                    <label for="login-username" style="font-size: 12px; font-weight: 600; color: var(--text-secondary);"><i class="fa-solid fa-user" style="color: var(--color-teal); margin-right: 6px;"></i> Username</label>
-                    <input type="text" id="login-username" style="width: 100%; padding: 12px 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-card); border-radius: 10px; color: var(--text-primary); font-size: 13px; outline: none; transition: var(--transition-smooth);" placeholder="Masukkan username..." required>
+                    <label for="login-username" style="font-size: 12px; font-weight: 600; color: var(--text-secondary);"><i class="fa-solid fa-user" style="color: #000000; margin-right: 6px;"></i> Username</label>
+                    <input type="text" id="login-username" style="width: 100%; padding: 12px 16px; background: #ffffff; border: 1px solid #d1d5db; border-radius: 6px; color: #000000; font-size: 13px; outline: none; transition: var(--transition-smooth);" placeholder="Masukkan username..." required>
                 </div>
                 <div class="form-group" style="display: flex; flex-direction: column; gap: 8px;">
-                    <label for="login-password" style="font-size: 12px; font-weight: 600; color: var(--text-secondary);"><i class="fa-solid fa-lock" style="color: var(--color-teal); margin-right: 6px;"></i> Password</label>
-                    <input type="password" id="login-password" style="width: 100%; padding: 12px 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-card); border-radius: 10px; color: var(--text-primary); font-size: 13px; outline: none; transition: var(--transition-smooth);" placeholder="Masukkan password..." required>
+                    <label for="login-password" style="font-size: 12px; font-weight: 600; color: var(--text-secondary);"><i class="fa-solid fa-lock" style="color: #000000; margin-right: 6px;"></i> Password</label>
+                    <input type="password" id="login-password" style="width: 100%; padding: 12px 16px; background: #ffffff; border: 1px solid #d1d5db; border-radius: 6px; color: #000000; font-size: 13px; outline: none; transition: var(--transition-smooth);" placeholder="Masukkan password..." required>
                 </div>
                 
-                <div id="login-error-msg" style="color: var(--color-coral); font-size: 12px; display: none; text-align: center; font-weight: 500; margin-top: 4px;">
+                <div id="login-error-msg" style="color: #991b1b; font-size: 12px; display: none; text-align: center; font-weight: 500; margin-top: 4px;">
                     <i class="fa-solid fa-circle-exclamation"></i> Username atau password salah!
                 </div>
                 
-                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; display: flex; justify-content: center; align-items: center; gap: 8px; font-weight: 600; border-radius: 10px; cursor: pointer; transition: var(--transition-smooth); font-size: 14px; margin-top: 8px;">
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; display: flex; justify-content: center; align-items: center; gap: 8px; font-weight: 600; border-radius: 6px; cursor: pointer; transition: var(--transition-smooth); font-size: 14px; margin-top: 8px;">
                     <i class="fa-solid fa-right-to-bracket"></i> Sign In
                 </button>
             </form>
@@ -101,16 +101,16 @@
                 <div class="header-actions">
                     <span class="pve-version-tag" id="pve-version-tag">Proxmox VE --</span>
                     <!-- HOST NODE ACTIONS AND SHELL BUTTONS -->
-                    <button class="btn-refresh" id="btn-node-shell" style="background: rgba(0, 242, 254, 0.1); color: var(--color-teal); border: 1px solid rgba(0, 242, 254, 0.3);">
+                    <button class="btn-refresh" id="btn-node-shell" style="background: #ffffff; color: #000000; border: 1px solid #000000;">
                         <i class="fa-solid fa-terminal"></i> Host Shell
                     </button>
                     <div class="dropdown" style="position: relative; display: inline-block;">
-                        <button class="btn-refresh" id="btn-node-power" style="background: rgba(255, 94, 98, 0.1); color: #ff5e62; border: 1px solid rgba(255, 94, 98, 0.3);">
+                        <button class="btn-refresh" id="btn-node-power" style="background: #ffffff; color: #000000; border: 1px solid #000000;">
                             <i class="fa-solid fa-power-off"></i> Host Power
                         </button>
-                        <div class="dropdown-content" id="node-power-dropdown" style="display: none; position: absolute; right: 0; background-color: #151d30; min-width: 140px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.5); z-index: 100; border-radius: 8px; border: 1px solid var(--border-card); overflow: hidden; margin-top: 4px;">
-                            <a href="#" onclick="confirmNodeAction('reboot')" style="color: var(--text-primary); padding: 10px 14px; text-decoration: none; display: block; font-size: 12px; transition: var(--transition-smooth);"><i class="fa-solid fa-arrows-rotate" style="margin-right: 8px; color: #ff9966;"></i> Reboot Host</a>
-                            <a href="#" onclick="confirmNodeAction('shutdown')" style="color: #ff5e62; padding: 10px 14px; text-decoration: none; display: block; font-size: 12px; transition: var(--transition-smooth);"><i class="fa-solid fa-power-off" style="margin-right: 8px;"></i> Shutdown Host</a>
+                        <div class="dropdown-content" id="node-power-dropdown" style="display: none; position: absolute; right: 0; background-color: #ffffff; min-width: 140px; box-shadow: 0px 4px 12px rgba(0,0,0,0.05); z-index: 100; border-radius: 6px; border: 1px solid #000000; overflow: hidden; margin-top: 4px;">
+                            <a href="#" onclick="confirmNodeAction('reboot')" style="color: var(--text-primary); padding: 10px 14px; text-decoration: none; display: block; font-size: 12px; transition: var(--transition-smooth);"><i class="fa-solid fa-arrows-rotate" style="margin-right: 8px; color: #000000;"></i> Reboot Host</a>
+                            <a href="#" onclick="confirmNodeAction('shutdown')" style="color: #000000; padding: 10px 14px; text-decoration: none; display: block; font-size: 12px; transition: var(--transition-smooth);"><i class="fa-solid fa-power-off" style="margin-right: 8px; color: #000000;"></i> Shutdown Host</a>
                         </div>
                     </div>
                     <button class="btn-refresh" id="btn-manual-refresh">
@@ -183,14 +183,8 @@
                     <div class="card-body">
                         <div class="gauge-container">
                             <svg class="progress-ring" width="120" height="120">
-                                <circle class="progress-ring__circle-bg" stroke="#1c2538" stroke-width="8" fill="transparent" r="50" cx="60" cy="60"/>
-                                <circle class="progress-ring__circle" id="cpu-ring" stroke="url(#cpu-gradient)" stroke-width="8" stroke-dasharray="314.16" stroke-dashoffset="314.16" fill="transparent" r="50" cx="60" cy="60"/>
-                                <defs>
-                                    <linearGradient id="cpu-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" stop-color="#00F2FE"/>
-                                        <stop offset="100%" stop-color="#4FACFE"/>
-                                    </linearGradient>
-                                </defs>
+                                <circle class="progress-ring__circle-bg" stroke="#e5e7eb" stroke-width="8" fill="transparent" r="50" cx="60" cy="60"/>
+                                <circle class="progress-ring__circle" id="cpu-ring" stroke="#000000" stroke-width="8" stroke-dasharray="314.16" stroke-dashoffset="314.16" fill="transparent" r="50" cx="60" cy="60"/>
                             </svg>
                             <div class="gauge-value" id="cpu-value">0%</div>
                         </div>
@@ -209,14 +203,8 @@
                     <div class="card-body">
                         <div class="gauge-container">
                             <svg class="progress-ring" width="120" height="120">
-                                <circle class="progress-ring__circle-bg" stroke="#1c2538" stroke-width="8" fill="transparent" r="50" cx="60" cy="60"/>
-                                <circle class="progress-ring__circle" id="ram-ring" stroke="url(#ram-gradient)" stroke-width="8" stroke-dasharray="314.16" stroke-dashoffset="314.16" fill="transparent" r="50" cx="60" cy="60"/>
-                                <defs>
-                                    <linearGradient id="ram-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" stop-color="#b15eff"/>
-                                        <stop offset="100%" stop-color="#7000ff"/>
-                                    </linearGradient>
-                                </defs>
+                                <circle class="progress-ring__circle-bg" stroke="#e5e7eb" stroke-width="8" fill="transparent" r="50" cx="60" cy="60"/>
+                                <circle class="progress-ring__circle" id="ram-ring" stroke="#000000" stroke-width="8" stroke-dasharray="314.16" stroke-dashoffset="314.16" fill="transparent" r="50" cx="60" cy="60"/>
                             </svg>
                             <div class="gauge-value" id="ram-value">0%</div>
                         </div>
@@ -234,14 +222,8 @@
                     <div class="card-body">
                         <div class="gauge-container">
                             <svg class="progress-ring" width="120" height="120">
-                                <circle class="progress-ring__circle-bg" stroke="#1c2538" stroke-width="8" fill="transparent" r="50" cx="60" cy="60"/>
-                                <circle class="progress-ring__circle" id="storage-ring" stroke="url(#storage-gradient)" stroke-width="8" stroke-dasharray="314.16" stroke-dashoffset="314.16" fill="transparent" r="50" cx="60" cy="60"/>
-                                <defs>
-                                    <linearGradient id="storage-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" stop-color="#FF5E62"/>
-                                        <stop offset="100%" stop-color="#FF9966"/>
-                                    </linearGradient>
-                                </defs>
+                                <circle class="progress-ring__circle-bg" stroke="#e5e7eb" stroke-width="8" fill="transparent" r="50" cx="60" cy="60"/>
+                                <circle class="progress-ring__circle" id="storage-ring" stroke="#000000" stroke-width="8" stroke-dasharray="314.16" stroke-dashoffset="314.16" fill="transparent" r="50" cx="60" cy="60"/>
                             </svg>
                             <div class="gauge-value" id="storage-value">0%</div>
                         </div>
