@@ -443,7 +443,7 @@ function startMikrotikPoller() {
     } catch (err) {
       cachedMikrotikStats.online = false;
     }
-  }, 3000);
+  }, 2000);
 }
 
 // Start on Boot

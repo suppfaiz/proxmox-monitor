@@ -2,7 +2,7 @@
 const BACKEND_URL = window.location.origin.includes('localhost:8080') || window.location.origin.includes('127.0.0.1:8080') 
     ? 'http://localhost:5005' 
     : window.location.origin;
-const POLL_INTERVAL = 5000; // 5 seconds
+const POLL_INTERVAL = 2000; // 2 seconds
 const MAX_LOGS = 30;
 const GAUGE_CIRCUMFERENCE = 314.16;
 
