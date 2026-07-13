@@ -127,7 +127,7 @@ async function authenticatedFetch(url, options = {}) {
             authToken = '';
             localStorage.removeItem('pve_dashboard_token');
             elLoginOverlay.style.display = 'flex';
-            showToast('Sesi Anda telah kedaluwarsa. Harap login kembali.');
+            showToast('Your session has expired. Please log in again.');
             if (pollerId) clearInterval(pollerId);
             throw new Error('Unauthorized session.');
         }
@@ -699,7 +699,7 @@ async function fetchNodeStatus() {
             updateCharts(null, null);
         }
     } catch (error) {
-        addConsoleLog(`Gagal mengambil metrics Node: ${error.message}`, 'error');
+        addConsoleLog(`Failed to fetch Node metrics: ${error.message}`, 'error');
     }
 }
 
@@ -726,12 +726,12 @@ async function fetchNodesList() {
                     <td>${isOnline ? Math.round(nd.cpu * 100) + '%' : '-'}</td>
                     <td>${isOnline ? formatBytes(nd.mem, 1) + ' / ' + formatBytes(nd.maxmem, 0) : '-'}</td>
                     <td>${isOnline ? formatUptime(nd.uptime) : '-'}</td>
-                    <td><span class="badge-demo" style="background: rgba(157, 78, 221, 0.1); color: var(--color-purple); border-color: rgba(157, 78, 221, 0.3); font-size: 9px;">${nd.level ? nd.level.toUpperCase() : 'MEMBER'}</span></td>
+                    <td><span class="badge-demo" style="background: #f3f4f6; color: #111827; border-color: #d1d5db; font-size: 9px;">${nd.level ? nd.level.toUpperCase() : 'MEMBER'}</span></td>
                 </tr>
             `;
         });
     } catch (e) {
-        addConsoleLog(`Gagal mengambil daftar node: ${e.message}`, 'error');
+        addConsoleLog(`Failed to fetch node list: ${e.message}`, 'error');
     }
 }
 
@@ -757,7 +757,7 @@ async function fetchResources() {
         // 3. Render Top Resource Consumers widget
         renderTopConsumers(vms);
     } catch (error) {
-        addConsoleLog(`Gagal mengambil VM/Containers: ${error.message}`, 'error');
+        addConsoleLog(`Failed to fetch VM/Containers: ${error.message}`, 'error');
     }
 }
 
@@ -805,16 +805,16 @@ function renderSlaAlerts() {
     el.innerHTML = '';
     
     if (slaAlerts.length === 0) {
-        el.innerHTML = `<div class="text-muted text-center" style="font-size: 11px; padding: 20px;">Belum ada riwayat alarm SLA.</div>`;
+        el.innerHTML = `<div class="text-muted text-center" style="font-size: 11px; padding: 20px;">No SLA alarm history available.</div>`;
         return;
     }
     
     slaAlerts.forEach(alert => {
         const isBreach = alert.type === 'stopped';
         el.innerHTML += `
-            <div class="log-item" style="border-left: 2px solid ${isBreach ? '#ef4444' : '#10b981'}; padding: 8px; margin-bottom: 6px; background: rgba(255,255,255,0.02); border-radius: 4px; display: flex; gap: 8px; font-size: 11px;">
+            <div class="log-item" style="border-left: 3px solid ${isBreach ? '#111827' : '#9ca3af'}; padding: 8px; margin-bottom: 6px; background: #fafafa; border: 1px solid #e5e7eb; border-left-width: 3px; border-radius: 4px; display: flex; gap: 8px; font-size: 11px;">
                 <span class="log-time" style="color: var(--text-secondary); font-family: monospace;">[${alert.timestamp}]</span>
-                <span class="log-message" style="color: ${isBreach ? '#fca5a5' : '#a7f3d0'}; font-weight: 500;">${alert.message}</span>
+                <span class="log-message" style="color: #111827; font-weight: 500;">${alert.message}</span>
             </div>
         `;
     });
@@ -833,7 +833,7 @@ function renderVmTable(vms) {
     elVmCounter.textContent = `Total: ${filteredVms.length}`;
     
     if (filteredVms.length === 0) {
-        elVmTableBody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tidak ada Virtual Machine atau Container ditemukan.</td></tr>`;
+        elVmTableBody.innerHTML = `<tr><td colspan="9" class="text-center text-muted">No Virtual Machine or Container found.</td></tr>`;
         return;
     }
 
@@ -1062,7 +1062,7 @@ async function fetchStorageStatus() {
             `;
         });
     } catch (e) {
-        addConsoleLog(`Gagal mengambil data Storage: ${e.message}`, 'error');
+        addConsoleLog(`Failed to fetch Storage data: ${e.message}`, 'error');
     }
 }
 
@@ -1100,7 +1100,7 @@ async function fetchBackupsData() {
             `;
         });
     } catch (e) {
-        addConsoleLog(`Gagal mengambil data Backup: ${e.message}`, 'error');
+        addConsoleLog(`Failed to fetch Backup data: ${e.message}`, 'error');
     }
 }
 
@@ -1123,7 +1123,7 @@ async function fetchNetworkInterfaces() {
             `;
         });
     } catch (e) {
-        addConsoleLog(`Gagal mengambil data interfaces network: ${e.message}`, 'error');
+        addConsoleLog(`Failed to fetch network interfaces data: ${e.message}`, 'error');
     }
 }
 
@@ -1152,13 +1152,13 @@ async function fetchMikrotikStats() {
         const elInterfacesBody = document.getElementById('mikrotik-interfaces-body');
 
         if (!data.online) {
-            elStatusText.innerHTML = '<span style="color: #ef4444;"><i class="fa-solid fa-circle-xmark"></i> Offline</span>';
+            elStatusText.innerHTML = '<span style="color: #6b7280;"><i class="fa-solid fa-circle-xmark"></i> Offline</span>';
             elUptimeText.textContent = 'Uptime: --';
             return;
         }
 
         // 1. Status & Uptime
-        elStatusText.innerHTML = '<span style="color: #10b981;"><i class="fa-solid fa-circle-check"></i> Online</span>';
+        elStatusText.innerHTML = '<span style="color: #111827;"><i class="fa-solid fa-circle-check"></i> Online</span>';
         elUptimeText.textContent = `Uptime: ${formatUptime(data.identity.uptime)}`;
 
         // 2. CPU
@@ -1170,7 +1170,7 @@ async function fetchMikrotikStats() {
         const ramTotalStr = formatBytes(data.resources.ramTotal, 1);
         elRamText.textContent = `${ramUsedStr} / ${ramTotalStr}`;
         const ramPctVal = data.resources.ramTotal > 0 ? Math.round((data.resources.ramUsed / data.resources.ramTotal) * 100) : 0;
-        elRamPct.textContent = `${ramPctVal}% terpakai`;
+        elRamPct.textContent = `${ramPctVal}% used`;
 
         // 4. Specs
         elSpecName.textContent = data.identity.name;
@@ -1184,7 +1184,7 @@ async function fetchMikrotikStats() {
         elDiskText.textContent = `${diskUsedStr} / ${diskTotalStr}`;
         const diskPctVal = data.resources.diskTotal > 0 ? Math.round((data.resources.diskUsed / data.resources.diskTotal) * 100) : 0;
         elDiskBar.style.width = `${diskPctVal}%`;
-        elDiskPct.textContent = `${diskPctVal}% terpakai`;
+        elDiskPct.textContent = `${diskPctVal}% used`;
 
         // 6. Interfaces table
         if (data.interfaces && data.interfaces.length > 0) {
@@ -1205,18 +1205,18 @@ async function fetchMikrotikStats() {
                 tr.innerHTML = `
                     <td><strong>${iface.name}</strong></td>
                     <td>${statusBadge}</td>
-                    <td style="color: #10b981;"><i class="fa-solid fa-arrow-down" style="font-size:10px; margin-right:4px;"></i> ${rxRateFormatted}</td>
-                    <td style="color: #ff9966;"><i class="fa-solid fa-arrow-up" style="font-size:10px; margin-right:4px;"></i> ${txRateFormatted}</td>
+                    <td style="color: #111827;"><i class="fa-solid fa-arrow-down" style="font-size:10px; margin-right:4px;"></i> ${rxRateFormatted}</td>
+                    <td style="color: #6b7280;"><i class="fa-solid fa-arrow-up" style="font-size:10px; margin-right:4px;"></i> ${txRateFormatted}</td>
                     <td style="font-size:11px; color:var(--text-secondary);">${rxTotalFormatted}</td>
                     <td style="font-size:11px; color:var(--text-secondary);">${txTotalFormatted}</td>
                 `;
                 elInterfacesBody.appendChild(tr);
             });
         } else {
-            elInterfacesBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">Tidak ada data interfaces.</td></tr>';
+            elInterfacesBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">No interface data available.</td></tr>';
         }
     } catch (err) {
-        addConsoleLog(`Gagal mengambil data MikroTik: ${err.message}`, 'error');
+        addConsoleLog(`Failed to fetch MikroTik data: ${err.message}`, 'error');
     }
 }
 
@@ -1241,7 +1241,7 @@ async function fetchTasksHistory() {
         el.innerHTML = '';
         
         if (tasks.length === 0) {
-            el.innerHTML = `<div class="text-muted text-center" style="font-size: 12px; padding-top: 20px;">Tidak ada riwayat tugas Proxmox.</div>`;
+            el.innerHTML = `<div class="text-muted text-center" style="font-size: 12px; padding-top: 20px;">No Proxmox task history found.</div>`;
             return;
         }
         
@@ -1281,7 +1281,7 @@ async function fetchSettings() {
         
         toggleCredentialsFields(settings.demoMode);
     } catch (e) {
-        addConsoleLog(`Gagal memuat pengaturan: ${e.message}`, 'error');
+        addConsoleLog(`Failed to load settings: ${e.message}`, 'error');
     }
 }
 
@@ -1304,23 +1304,23 @@ function toggleCredentialsFields(isDemo) {
 let terminalInputHandler = null;
 
 window.openConsole = function(node, vmid, vmName, type) {
-    addConsoleLog(`Membuka console untuk ${vmName} (ID: ${vmid})...`, 'info');
+    addConsoleLog(`Opening console for ${vmName} (ID: ${vmid})...`, 'info');
     
     if (!demoModeActive) {
         // Production Mode: Open direct Proxmox VE Integrated noVNC Console or Host Shell
         if (!proxmoxWebUrl) {
-            showToast('Alamat IP Proxmox kosong atau belum diset.');
+            showToast('Proxmox IP address is empty or not set.');
             return;
         }
         
         let consoleUrl = '';
         if (vmid === 'node') {
             consoleUrl = `${proxmoxWebUrl}/?console=shell&novnc=1&node=${node}`;
-            addConsoleLog(`Membuka shell terminal host node ${node} di tab baru.`, 'success');
+            addConsoleLog(`Opening host node shell terminal for ${node} in a new tab.`, 'success');
         } else {
             const consoleType = type === 'qemu' ? 'kvm' : 'lxc';
             consoleUrl = `${proxmoxWebUrl}/?console=${consoleType}&novnc=1&vmid=${vmid}&node=${node}`;
-            addConsoleLog(`Membuka console VNC ${vmName} (ID: ${vmid}) di tab baru.`, 'success');
+            addConsoleLog(`Opening VNC console for ${vmName} (ID: ${vmid}) in a new tab.`, 'success');
         }
         
         window.open(consoleUrl, '_blank');
@@ -1338,8 +1338,8 @@ window.openConsole = function(node, vmid, vmName, type) {
         const firstTab = document.querySelector('.console-tab[data-tab="cli"]');
         if (firstTab) {
             firstTab.classList.add('active');
-            firstTab.style.background = 'rgba(0,242,254,0.1)';
-            firstTab.style.color = 'var(--color-teal)';
+            firstTab.style.background = '#111827';
+            firstTab.style.color = '#ffffff';
         }
         document.getElementById('terminal-view-cli').style.display = 'flex';
         document.getElementById('terminal-view-vnc').style.display = 'none';
@@ -1351,7 +1351,7 @@ window.openConsole = function(node, vmid, vmName, type) {
         if (vmid === 'node') {
             vncBg.className = 'vnc-desktop-wrapper';
             vncBg.style.background = 'linear-gradient(135deg, #100b19 0%, #1a1525 100%)';
-            vncTitle.innerHTML = `<i class="fa-solid fa-server" style="color: var(--color-teal);"></i> Node Dashboard (${node})`;
+            vncTitle.innerHTML = `<i class="fa-solid fa-server"></i> Node Dashboard (${node})`;
         } else if (vmName.toLowerCase().includes('win')) {
             vncBg.className = 'vnc-desktop-wrapper win11';
             vncBg.style.background = 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)';
@@ -1541,25 +1541,25 @@ async function executeVmAction(node, vmid, action) {
         
         if (!response.ok) throw new Error();
         
-        addConsoleLog(`Sukses mengirim perintah '${action.toUpperCase()}' untuk VM ${vmid}`, 'success');
-        showToast(`Tindakan '${action}' berhasil dikirim untuk VM ${vmid}`);
+        addConsoleLog(`Successfully sent command '${action.toUpperCase()}' for VM ${vmid}`, 'success');
+        showToast(`Action '${action}' successfully sent for VM ${vmid}`);
         
         fetchResources();
         fetchTasksHistory();
     } catch (e) {
-        addConsoleLog(`Gagal mengeksekusi '${action}' untuk VM ${vmid}`, 'error');
-        showToast(`Gagal mengeksekusi tindakan pada VM ${vmid}`);
+        addConsoleLog(`Failed to execute '${action}' for VM ${vmid}`, 'error');
+        showToast(`Failed to execute action on VM ${vmid}`);
     }
 }
 
 window.confirmAction = function(node, vmid, action, vmName) {
     pendingAction = { node, vmid, action, vmName };
-    let verb = 'menyalakan';
-    if (action === 'shutdown') verb = 'mematikan (graceful shutdown)';
-    if (action === 'stop') verb = 'mematikan paksa (force stop)';
-    if (action === 'reboot') verb = 'me-reboot';
+    let verb = 'start';
+    if (action === 'shutdown') verb = 'shutdown (graceful)';
+    if (action === 'stop') verb = 'stop (force stop)';
+    if (action === 'reboot') verb = 'reboot';
     
-    elConfirmModalText.innerHTML = `Apakah Anda yakin ingin <strong>${verb}</strong> VM <strong>${vmName} (ID: ${vmid})</strong> di node <strong>${node}</strong>?`;
+    elConfirmModalText.innerHTML = `Are you sure you want to <strong>${verb}</strong> VM <strong>${vmName} (ID: ${vmid})</strong> on node <strong>${node}</strong>?`;
     elConfirmModal.classList.add('active');
 };
 
@@ -1610,7 +1610,7 @@ elSettingsForm.addEventListener('submit', async (e) => {
         mikrotikPort: parseInt(document.getElementById('settings-mikrotik-port').value) || 161
     };
     
-    addConsoleLog('Menyimpan pengaturan baru ke backend...', 'info');
+    addConsoleLog('Saving new settings to backend...', 'info');
     
     try {
         const response = await authenticatedFetch(`${BACKEND_URL}/api/settings`, {
@@ -1621,17 +1621,17 @@ elSettingsForm.addEventListener('submit', async (e) => {
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || 'Server error');
         
-        addConsoleLog('Konfigurasi baru berhasil disimpan!', 'success');
-        showToast('Konfigurasi berhasil disimpan!');
+        addConsoleLog('New configuration successfully saved!', 'success');
+        showToast('Configuration successfully saved!');
         
         const online = await checkBackendStatus();
         if (online) {
             triggerRouteUpdate(currentActiveRoute);
         }
     } catch (err) {
-        addConsoleLog(`Gagal menyimpan konfigurasi: ${err.message}`, 'error');
-        showAlert(`Gagal menghubungkan ke Proxmox: ${err.message}`);
-        showToast('Penyimpanan konfigurasi gagal!');
+        addConsoleLog(`Failed to save configuration: ${err.message}`, 'error');
+        showAlert(`Failed to connect to Proxmox: ${err.message}`);
+        showToast('Configuration save failed!');
     }
 });
 
@@ -1639,7 +1639,7 @@ elBtnManualRefresh.addEventListener('click', async () => {
     elBtnManualRefresh.disabled = true;
     elBtnManualRefresh.querySelector('i').classList.add('fa-spin');
     
-    addConsoleLog(`Menyegarkan data halaman ${currentActiveRoute.toUpperCase()}...`, 'info');
+    addConsoleLog(`Refreshing page data for ${currentActiveRoute.toUpperCase()}...`, 'info');
     
     const online = await checkBackendStatus();
     if (online) {
@@ -1656,13 +1656,13 @@ elBtnClearLogs.addEventListener('click', () => {
     const activeTab = document.querySelector('.log-tab.active').getAttribute('data-tab');
     if (activeTab === 'system') {
         elConsoleLogs.innerHTML = '';
-        addConsoleLog('Log riwayat sistem dibersihkan.', 'info');
+        addConsoleLog('System history logs cleared.', 'info');
     } else if (activeTab === 'sla') {
         slaAlerts = [];
         renderSlaAlerts();
-        showToast('Riwayat alarm SLA dibersihkan.');
+        showToast('SLA alarm history cleared.');
     } else {
-        showToast('Hanya System Logs dan SLA Alerts yang dapat dibersihkan secara manual.');
+        showToast('Only System Logs and SLA Alerts can be cleared manually.');
     }
 });
 
@@ -1690,26 +1690,26 @@ if (elBtnNodePower && elNodePowerDropdown) {
 
 window.confirmNodeAction = function(action) {
     pendingAction = { node: currentNodeName, action, type: 'node' };
-    let verb = 'me-reboot';
-    if (action === 'shutdown') verb = 'mematikan (shutdown)';
+    let verb = 'reboot';
+    if (action === 'shutdown') verb = 'shutdown';
     
-    elConfirmModalText.innerHTML = `Apakah Anda yakin ingin <strong>${verb}</strong> server utama Proxmox Host <strong>${currentNodeName}</strong>?<br><br><span style="color: #ff5e62; font-weight: bold;"><i class="fa-solid fa-triangle-exclamation"></i> PERINGATAN: Tindakan ini akan mematikan seluruh virtual machine dan container yang sedang berjalan!</span>`;
+    elConfirmModalText.innerHTML = `Are you sure you want to <strong>${verb}</strong> Proxmox Host <strong>${currentNodeName}</strong>?<br><br><span style="color: #111827; font-weight: bold;"><i class="fa-solid fa-triangle-exclamation"></i> WARNING: This action will power down all running virtual machines and containers!</span>`;
     elConfirmModal.classList.add('active');
 };
 
 async function executeNodeAction(node, action) {
-    addConsoleLog(`Mengirim perintah ${action.toUpperCase()} ke node host ${node}...`, 'info');
+    addConsoleLog(`Sending ${action.toUpperCase()} command to host node ${node}...`, 'info');
     try {
         const response = await authenticatedFetch(`${BACKEND_URL}/api/node/${node}/status/${action}`, {
             method: 'POST'
         });
         if (!response.ok) throw new Error();
         const result = await response.json();
-        showToast(`Perintah ${action} host berhasil dikirim!`);
-        addConsoleLog(`Host ${node} sedang melakukan proses ${action}.`, 'success');
+        showToast(`Host ${action} command successfully sent!`);
+        addConsoleLog(`Host ${node} is performing ${action}...`, 'success');
     } catch (error) {
-        showToast(`Gagal mengeksekusi perintah ${action} pada host.`);
-        addConsoleLog(`Gagal perintah host ${action}: ${error.message}`, 'error');
+        showToast(`Failed to execute ${action} command on host.`);
+        addConsoleLog(`Host ${action} command failed: ${error.message}`, 'error');
     }
 }
 
@@ -1765,17 +1765,17 @@ async function startApp() {
             });
             
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Login gagal.');
+            if (!response.ok) throw new Error(data.error || 'Login failed.');
             
             authToken = data.token;
             localStorage.setItem('pve_dashboard_token', data.token);
             elLoginOverlay.style.display = 'none';
-            showToast('Login sukses! Selamat datang kembali.');
+            showToast('Login successful! Welcome back.');
             
             triggerRouteUpdate(currentActiveRoute);
             setupPoller();
         } catch (err) {
-            elLoginErrorMsg.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> ${err.message || 'Username atau password salah!'}`;
+            elLoginErrorMsg.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> ${err.message || 'Invalid username or password!'}`;
             elLoginErrorMsg.style.display = 'block';
         }
     });
@@ -1785,7 +1785,7 @@ async function startApp() {
         authToken = '';
         localStorage.removeItem('pve_dashboard_token');
         elLoginOverlay.style.display = 'flex';
-        showToast('Anda berhasil keluar.');
+        showToast('You have successfully logged out.');
         if (pollerId) clearInterval(pollerId);
     });
 

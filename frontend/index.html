@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Proxmox VE - CloudOps Dashboard</title>
+    <title>JNOC - CloudOps Dashboard</title>
     <!-- Google Font: Outfit -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- FontAwesome for Icons -->
@@ -21,22 +21,22 @@
                 <div class="logo-icon" style="font-size: 32px; margin-bottom: 12px; display: inline-block;">
                     <i class="fa-solid fa-server" style="color: #000000;"></i>
                 </div>
-                <h2 style="font-size: 20px; font-weight: 800; letter-spacing: 0.5px; color: #000000;">PROXMOX DASHBOARD</h2>
-                <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Masukkan kredensial untuk mengakses panel pemantauan</p>
+                <h2 style="font-size: 20px; font-weight: 800; letter-spacing: 0.5px; color: #000000;">JNOC DASHBOARD</h2>
+                <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Enter credentials to access the monitoring panel</p>
             </div>
             
             <form id="login-form" style="text-align: left; display: flex; flex-direction: column; gap: 16px;">
                 <div class="form-group" style="display: flex; flex-direction: column; gap: 8px;">
                     <label for="login-username" style="font-size: 12px; font-weight: 600; color: var(--text-secondary);"><i class="fa-solid fa-user" style="color: #000000; margin-right: 6px;"></i> Username</label>
-                    <input type="text" id="login-username" style="width: 100%; padding: 12px 16px; background: #ffffff; border: 1px solid #d1d5db; border-radius: 6px; color: #000000; font-size: 13px; outline: none; transition: var(--transition-smooth);" placeholder="Masukkan username..." required>
+                    <input type="text" id="login-username" style="width: 100%; padding: 12px 16px; background: #ffffff; border: 1px solid #d1d5db; border-radius: 6px; color: #000000; font-size: 13px; outline: none; transition: var(--transition-smooth);" placeholder="Enter username..." required>
                 </div>
                 <div class="form-group" style="display: flex; flex-direction: column; gap: 8px;">
                     <label for="login-password" style="font-size: 12px; font-weight: 600; color: var(--text-secondary);"><i class="fa-solid fa-lock" style="color: #000000; margin-right: 6px;"></i> Password</label>
-                    <input type="password" id="login-password" style="width: 100%; padding: 12px 16px; background: #ffffff; border: 1px solid #d1d5db; border-radius: 6px; color: #000000; font-size: 13px; outline: none; transition: var(--transition-smooth);" placeholder="Masukkan password..." required>
+                    <input type="password" id="login-password" style="width: 100%; padding: 12px 16px; background: #ffffff; border: 1px solid #d1d5db; border-radius: 6px; color: #000000; font-size: 13px; outline: none; transition: var(--transition-smooth);" placeholder="Enter password..." required>
                 </div>
                 
                 <div id="login-error-msg" style="color: #991b1b; font-size: 12px; display: none; text-align: center; font-weight: 500; margin-top: 4px;">
-                    <i class="fa-solid fa-circle-exclamation"></i> Username atau password salah!
+                    <i class="fa-solid fa-circle-exclamation"></i> Invalid username or password!
                 </div>
                 
                 <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; display: flex; justify-content: center; align-items: center; gap: 8px; font-weight: 600; border-radius: 6px; cursor: pointer; transition: var(--transition-smooth); font-size: 14px; margin-top: 8px;">
@@ -58,7 +58,7 @@
                     <i class="fa-solid fa-server"></i>
                 </div>
                 <div class="logo-text">
-                    <h2>PROXMOX<span>VE</span></h2>
+                    <h2>JNOC</h2>
                     <p id="cluster-name">CloudOps Cluster</p>
                 </div>
             </div>
@@ -67,7 +67,7 @@
                 <ul id="sidebar-menu">
                     <li class="active" data-target="dashboard"><a href="#dashboard"><i class="fa-solid fa-chart-line"></i> <span>Dashboard</span></a></li>
                     <li data-target="nodes"><a href="#nodes"><i class="fa-solid fa-network-wired"></i> <span>Nodes</span></a></li>
-                    <li data-target="vms"><a href="#vms"><i class="fa-solid fa-desktop"></i> <span>VMs & Containers</span></a></li>
+                    <li data-target="vms"><a href="#vms"><i class="fa-solid fa-desktop"></i> <span>VMs &amp; Containers</span></a></li>
                     <li data-target="storage"><a href="#storage"><i class="fa-solid fa-database"></i> <span>Storage</span></a></li>
                     <li data-target="backups"><a href="#backups"><i class="fa-solid fa-shield-halved"></i> <span>Backups</span></a></li>
                     <li data-target="network"><a href="#network"><i class="fa-solid fa-ethernet"></i> <span>Network</span></a></li>
@@ -85,7 +85,7 @@
                     <span id="backend-mode-badge" class="badge-demo">DEMO MODE</span>
                 </div>
                 <button class="btn btn-secondary" id="btn-logout" style="width: 100%; padding: 7px 12px; font-size: 12.5px; display: flex; align-items: center; justify-content: center; gap: 7px; cursor: pointer;">
-                    <i class="fa-solid fa-right-from-bracket"></i> Keluar (Sign Out)
+                    <i class="fa-solid fa-right-from-bracket"></i> Sign Out
                 </button>
             </div>
         </aside>
@@ -95,7 +95,7 @@
             <!-- Header bar (Global) -->
             <header class="main-header">
                 <div class="header-title">
-                    <h1 id="page-title">Pemantauan Server</h1>
+                    <h1 id="page-title">Server Monitoring</h1>
                     <p id="pve-node-display">Node: loading...</p>
                 </div>
                 <div class="header-actions">
@@ -268,7 +268,7 @@
                             <span class="log-tab" data-tab="system" style="cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-secondary); transition: var(--transition-smooth);">System Logs</span>
                             <span class="log-tab" data-tab="sla" style="cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-secondary); transition: var(--transition-smooth);">SLA Alerts</span>
                         </div>
-                        <button class="btn-clear-logs" id="btn-clear-logs" title="Bersihkan log"><i class="fa-solid fa-trash-can"></i></button>
+                        <button class="btn-clear-logs" id="btn-clear-logs" title="Clear logs"><i class="fa-solid fa-trash-can"></i></button>
                     </div>
                     
                     <!-- Proxmox Tasks content -->
@@ -290,27 +290,27 @@
                 <!-- BOTTOM ROW: VM OVERVIEW & TOP CONSUMERS -->
                 <div class="vm-list-card" style="grid-column: span 2;">
                     <div class="card-header">
-                        <h3>Overview VMs & Containers</h3>
-                        <a href="#vms" class="text-link">Lihat Semua <i class="fa-solid fa-arrow-right"></i></a>
+                        <h3>Overview VMs &amp; Containers</h3>
+                        <a href="#vms" class="text-link">View All <i class="fa-solid fa-arrow-right"></i></a>
                     </div>
                     <div class="table-wrapper">
                         <table class="vm-table">
                             <thead>
                                 <tr>
                                     <th>ID</th>
-                                    <th>Tipe</th>
-                                    <th>Nama</th>
+                                    <th>Type</th>
+                                    <th>Name</th>
                                     <th>Status</th>
                                     <th>CPU Usage</th>
                                     <th>RAM Usage</th>
                                     <th>Network (RX / TX)</th>
                                     <th>Uptime</th>
-                                    <th class="text-right">Aksi</th>
+                                    <th class="text-right">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="dashboard-vm-body">
                                 <tr>
-                                    <td colspan="7" class="text-center text-muted">Memuat data...</td>
+                                    <td colspan="9" class="text-center text-muted">Loading data...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -323,7 +323,7 @@
                         <i class="fa-solid fa-triangle-exclamation card-icon"></i>
                     </div>
                     <div class="card-body-consumers" id="top-consumers-container">
-                        <div class="text-muted text-center" style="font-size: 13px; padding-top: 20px;">Memuat data konsumen...</div>
+                        <div class="text-muted text-center" style="font-size: 13px; padding-top: 20px;">Loading resource consumers...</div>
                     </div>
                 </div>
 
@@ -333,18 +333,18 @@
             <section id="view-nodes" class="view-section">
                 <div class="vm-list-card">
                     <div class="card-header">
-                        <h3>Daftar Node Cluster</h3>
+                        <h3>Cluster Node List</h3>
                     </div>
                     <div class="table-wrapper">
                         <table class="vm-table">
                             <thead>
                                 <tr>
-                                    <th>Nama Node</th>
+                                    <th>Node Name</th>
                                     <th>Status</th>
                                     <th>CPU Usage</th>
                                     <th>RAM Usage</th>
                                     <th>Uptime</th>
-                                    <th>Pangkat</th>
+                                    <th>Role</th>
                                 </tr>
                             </thead>
                             <tbody id="nodes-table-body">
@@ -360,16 +360,16 @@
                 <div class="vm-list-card">
                     <div class="card-header">
                         <div class="header-left">
-                            <h3>VM & Container Management</h3>
+                            <h3>VM &amp; Container Management</h3>
                             <span class="vm-counter" id="vm-counter">Total: 0</span>
                         </div>
                         <div class="header-right" style="display: flex; gap: 12px;">
-                            <select id="vm-status-filter" style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-card); color: var(--text-primary); padding: 8px 12px; border-radius: 8px; font-family: inherit; font-size: 13px;">
-                                <option value="all">Semua Status</option>
+                            <select id="vm-status-filter" style="background: #ffffff; border: 1px solid var(--border-card); color: var(--text-primary); padding: 8px 12px; border-radius: 8px; font-family: inherit; font-size: 13px;">
+                                <option value="all">All Statuses</option>
                                 <option value="running">Online</option>
                                 <option value="stopped">Offline</option>
                             </select>
-                            <input type="text" id="vm-search" placeholder="Cari VM / Container...">
+                            <input type="text" id="vm-search" placeholder="Search VM / Container...">
                         </div>
                     </div>
                     <div class="table-wrapper">
@@ -377,14 +377,14 @@
                             <thead>
                                 <tr>
                                     <th>ID</th>
-                                    <th>Tipe</th>
-                                    <th>Nama</th>
+                                    <th>Type</th>
+                                    <th>Name</th>
                                     <th>Status</th>
                                     <th>CPU Usage</th>
                                     <th>RAM Usage</th>
                                     <th>Network (RX / TX)</th>
                                     <th>Uptime</th>
-                                    <th class="text-right">Aksi</th>
+                                    <th class="text-right">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="vm-table-body">
@@ -399,18 +399,18 @@
             <section id="view-storage" class="view-section">
                 <div class="vm-list-card">
                     <div class="card-header">
-                        <h3>Penyimpanan (Storage Pools)</h3>
+                        <h3>Storage Pools</h3>
                     </div>
                     <div class="table-wrapper">
                         <table class="vm-table">
                             <thead>
                                 <tr>
                                     <th>Storage ID</th>
-                                    <th>Tipe</th>
-                                    <th>Konten</th>
-                                    <th>Kapasitas</th>
-                                    <th>Digunakan</th>
-                                    <th>Persentase</th>
+                                    <th>Type</th>
+                                    <th>Content</th>
+                                    <th>Size</th>
+                                    <th>Used</th>
+                                    <th>Usage %</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
@@ -426,14 +426,14 @@
             <section id="view-backups" class="view-section grid-2">
                 <div class="vm-list-card">
                     <div class="card-header">
-                        <h3>Jadwal Backup Otomatis</h3>
+                        <h3>Automated Backup Schedules</h3>
                     </div>
                     <div class="table-wrapper">
                         <table class="vm-table">
                             <thead>
                                 <tr>
-                                    <th>ID Jadwal</th>
-                                    <th>Jadwal</th>
+                                    <th>Schedule ID</th>
+                                    <th>Schedule</th>
                                     <th>Target VM</th>
                                     <th>Storage Target</th>
                                     <th>Status</th>
@@ -448,16 +448,16 @@
 
                 <div class="vm-list-card">
                     <div class="card-header">
-                        <h3>Riwayat Backup Terakhir</h3>
+                        <h3>Recent Backup History</h3>
                     </div>
                     <div class="table-wrapper">
                         <table class="vm-table">
                             <thead>
                                 <tr>
-                                    <th>Nama File Backup</th>
-                                    <th>ID VM</th>
-                                    <th>Tanggal Backup</th>
-                                    <th>Ukuran</th>
+                                    <th>Backup Filename</th>
+                                    <th>VM ID</th>
+                                    <th>Backup Date</th>
+                                    <th>Size</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
@@ -494,7 +494,7 @@
                                 <thead>
                                     <tr>
                                         <th>Interface</th>
-                                        <th>Tipe</th>
+                                        <th>Type</th>
                                         <th>IP Address</th>
                                         <th>Status</th>
                                     </tr>
@@ -541,7 +541,7 @@
                         </div>
                         <div class="metric-body">
                             <h2 id="mikrotik-ram-text">-- / --</h2>
-                            <p id="mikrotik-ram-pct" style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">0% terpakai</p>
+                            <p id="mikrotik-ram-pct" style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">0% used</p>
                         </div>
                     </div>
                 </div>
@@ -551,7 +551,7 @@
                     <!-- System Info Card -->
                     <div class="vm-list-card">
                         <div class="card-header">
-                            <h3>Spesifikasi Router</h3>
+                            <h3>Router Specifications</h3>
                         </div>
                         <div style="display: flex; flex-direction: column; gap: 12px; font-size: 13px;">
                             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-card); padding-bottom: 8px;">
@@ -580,13 +580,13 @@
                         </div>
                         <div style="display: flex; flex-direction: column; justify-content: center; height: 100%; gap: 10px;">
                             <div style="display: flex; justify-content: space-between; font-size: 13px;">
-                                <span style="color: var(--text-secondary);">Kapasitas Penyimpanan</span>
+                                <span style="color: var(--text-secondary);">Storage Capacity</span>
                                 <strong id="mikrotik-disk-text">-- / --</strong>
                             </div>
                             <div style="width: 100%; height: 8px; background: #f3f4f6; border-radius: 4px; overflow: hidden; border: 1px solid var(--border-card);">
                                 <div id="mikrotik-disk-bar" style="width: 0%; height: 100%; background: #111827; transition: width 0.5s ease;"></div>
                             </div>
-                            <p id="mikrotik-disk-pct" style="font-size: 11px; color: var(--text-secondary);">0% terpakai</p>
+                            <p id="mikrotik-disk-pct" style="font-size: 11px; color: var(--text-secondary);">0% used</p>
                         </div>
                     </div>
                 </div>
@@ -608,14 +608,14 @@
                 <!-- Interface Traffic list -->
                 <div class="vm-list-card" style="grid-column: span 3; width: 100%;">
                     <div class="card-header">
-                        <h3>Interfaces Traffic & Ports</h3>
+                        <h3>Interfaces Traffic &amp; Ports</h3>
                     </div>
                     <div class="table-container">
                         <table class="vm-table">
                             <thead>
                                 <tr>
                                     <th>Interface Port</th>
-                                    <th>Status Link</th>
+                                    <th>Link Status</th>
                                     <th>Download Rate (RX)</th>
                                     <th>Upload Rate (TX)</th>
                                     <th>Total Data RX</th>
@@ -624,7 +624,7 @@
                             </thead>
                             <tbody id="mikrotik-interfaces-body">
                                 <tr>
-                                    <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 20px;">Memuat status port interfaces...</td>
+                                    <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 20px;">Loading interface ports status...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -636,15 +636,15 @@
             <section id="view-settings" class="view-section">
                 <div class="vm-list-card" style="max-width: 700px; margin: 0 auto; width: 100%;">
                     <div class="card-header">
-                        <h3>Konfigurasi Koneksi Proxmox VE</h3>
+                        <h3>Proxmox VE Connection Configuration</h3>
                     </div>
                     <form id="settings-form" style="display: flex; flex-direction: column; gap: 16px; margin-top: 12px;">
                         
                         <div style="display: flex; flex-direction: column; gap: 6px;">
-                            <label style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">Mode Simulasi (Demo)</label>
+                            <label style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">Simulation Mode (Demo)</label>
                             <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
                                 <input type="checkbox" id="settings-demo-mode" style="width: 16px; height: 16px; cursor: pointer; accent-color: #111827;">
-                                <span style="font-size: 13px;">Aktifkan Demo Mode (Simulasi data sensor)</span>
+                                <span style="font-size: 13px;">Enable Demo Mode (Simulate sensor data)</span>
                             </div>
                         </div>
 
@@ -652,29 +652,29 @@
                             <div style="display: flex; flex-direction: column; gap: 6px;">
                                 <label for="settings-api-url">Proxmox API URL</label>
                                 <input type="text" id="settings-api-url" placeholder="https://192.168.1.100:8006/api2/json">
-                                <span style="font-size: 11px; color: var(--text-muted);">Masukkan format URL API Proxmox VE lengkap Anda (tanpa tanda / di akhir).</span>
+                                <span style="font-size: 11px; color: var(--text-muted);">Enter your full Proxmox VE API URL (without trailing slash).</span>
                             </div>
 
                             <div style="display: flex; flex-direction: column; gap: 6px;">
                                 <label for="settings-token-id">Proxmox Token ID</label>
                                 <input type="text" id="settings-token-id" placeholder="root@pam!dashboard">
-                                <span style="font-size: 11px; color: var(--text-muted);">Token ID yang dibuat di Proxmox, contoh: user@realm!tokenid</span>
+                                <span style="font-size: 11px; color: var(--text-muted);">Token ID created in Proxmox, example: user@realm!tokenid</span>
                             </div>
 
                             <div style="display: flex; flex-direction: column; gap: 6px;">
                                 <label for="settings-token-secret">Proxmox Token Secret</label>
                                 <input type="password" id="settings-token-secret" placeholder="••••••••••••••••">
-                                <span style="font-size: 11px; color: var(--text-muted);">Secret Value UUID Token Anda (tidak akan dibagikan ke client luar backend).</span>
+                                <span style="font-size: 11px; color: var(--text-muted);">Your Token Secret UUID value (will not be shared with external clients).</span>
                             </div>
                         </div>
 
                         <!-- MikroTik SNMP Configuration Fields -->
                         <div style="border-top: 1px solid var(--border-card); padding-top: 16px; margin-top: 4px;">
-                            <h4 style="font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.04em;"><i class="fa-solid fa-route"></i> Konfigurasi MikroTik SNMP</h4>
+                            <h4 style="font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.04em;"><i class="fa-solid fa-route"></i> MikroTik SNMP Configuration</h4>
                         </div>
 
                         <div style="display: flex; flex-direction: column; gap: 6px;">
-                            <label for="settings-mikrotik-ip">Alamat IP MikroTik Router</label>
+                            <label for="settings-mikrotik-ip">MikroTik Router IP Address</label>
                             <input type="text" id="settings-mikrotik-ip" placeholder="192.168.88.1">
                         </div>
 
@@ -691,7 +691,7 @@
 
                         <div style="border-top: 1px solid var(--border-card); padding-top: 16px; margin-top: 4px; display: flex; justify-content: flex-end;">
                             <button type="submit" class="btn btn-primary" style="padding: 10px 24px; font-size: 14px; display: flex; align-items: center; gap: 8px;">
-                                <i class="fa-solid fa-floppy-disk"></i> Simpan Pengaturan
+                                <i class="fa-solid fa-floppy-disk"></i> Save Settings
                             </button>
                         </div>
                     </form>
@@ -705,15 +705,15 @@
     <div class="modal" id="confirm-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Konfirmasi Tindakan</h3>
+                <h3>Confirm Action</h3>
                 <span class="close-modal" id="close-modal">&times;</span>
             </div>
             <div class="modal-body">
-                <p id="confirm-modal-text">Apakah Anda yakin ingin melakukan tindakan ini?</p>
+                <p id="confirm-modal-text">Are you sure you want to perform this action?</p>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" id="confirm-cancel">Batal</button>
-                <button class="btn btn-primary" id="confirm-execute">Ya, Lanjutkan</button>
+                <button class="btn btn-secondary" id="confirm-cancel">Cancel</button>
+                <button class="btn btn-primary" id="confirm-execute">Yes, Proceed</button>
             </div>
         </div>
     </div>
@@ -743,7 +743,7 @@
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center; margin-top: 10px; background: #161b22; padding: 8px 14px; border-radius: 6px; border: 1px solid #30363d;">
                         <span style="font-family: 'Courier New', monospace; font-size: 12px; color: #3fb950;" id="terminal-prompt">root@web-server-01:~#</span>
-                        <input type="text" id="terminal-input" style="flex-grow: 1; background: transparent; border: none; outline: none; font-family: 'Courier New', monospace; font-size: 12px; color: #e6edf3;" placeholder="Ketik perintah di sini (misal: help, neofetch, clear, exit)...">
+                        <input type="text" id="terminal-input" style="flex-grow: 1; background: transparent; border: none; outline: none; font-family: 'Courier New', monospace; font-size: 12px; color: #e6edf3;" placeholder="Type command here (e.g. help, neofetch, clear, exit)...">
                     </div>
                 </div>
 
@@ -797,7 +797,7 @@
             </div>
 
     <!-- Notification Toast -->
-    <div class="toast" id="toast-notification">Tindakan berhasil dikirim.</div>
+    <div class="toast" id="toast-notification">Action successfully sent.</div>
 
     <script src="app.js"></script>
 </body>
