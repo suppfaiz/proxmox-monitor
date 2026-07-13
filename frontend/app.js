@@ -1475,6 +1475,13 @@ function applyRoleAccessControl() {
             : 'Not logged in';
     }
 
+    const profileDisplayName = document.getElementById('profile-display-name');
+    if (profileDisplayName) {
+        profileDisplayName.textContent = currentUsername 
+            ? currentUsername.charAt(0).toUpperCase() + currentUsername.slice(1)
+            : 'Not logged in';
+    }
+
     // 4. If staff, disable settings input fields
     const settingsInputs = document.querySelectorAll('#settings-form input, #settings-form select');
     settingsInputs.forEach(input => {
