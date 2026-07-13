@@ -843,9 +843,14 @@
                             <h3>Operations Audit Trail Logs</h3>
                             <span style="font-size: 11px; color: var(--text-secondary);">Security tracking logs for ISO certification audit compliance</span>
                         </div>
-                        <button class="btn btn-secondary" id="btn-clear-audit-logs" style="padding: 7px 12px; font-size: 12px; display: flex; align-items: center; gap: 7px; border-color: #d1d5db;">
-                            <i class="fa-solid fa-trash-can"></i> Clear Audit Logs
-                        </button>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-secondary" onclick="exportAuditLogsToCsv()" style="padding: 7px 12px; font-size: 12px; display: flex; align-items: center; gap: 7px; border-color: #d1d5db;">
+                                <i class="fa-solid fa-file-csv"></i> Export CSV
+                            </button>
+                            <button class="btn btn-secondary" id="btn-clear-audit-logs" style="padding: 7px 12px; font-size: 12px; display: flex; align-items: center; gap: 7px; border-color: #d1d5db;">
+                                <i class="fa-solid fa-trash-can"></i> Clear Audit Logs
+                            </button>
+                        </div>
                     </div>
                     <div class="table-wrapper">
                         <table class="vm-table">
