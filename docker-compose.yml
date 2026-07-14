@@ -9,6 +9,7 @@ services:
     expose:
       - "9000"
     volumes:
+      - ./backend/.env:/var/www/html/.env
       - db-data:/var/www/html/database
     env_file:
       - ./backend/.env
@@ -20,6 +21,7 @@ services:
     restart: always
     command: php artisan switches:ping
     volumes:
+      - ./backend/.env:/var/www/html/.env
       - db-data:/var/www/html/database
     env_file:
       - ./backend/.env
