@@ -16,7 +16,7 @@ class AuditLogController extends Controller
     public function clear(Request $request)
     {
         AuditLog::truncate();
-        $currentUser = $request->input('user');
+        $currentUser = (object)$request->input('user');
         AuditLog::log($currentUser->username, 'clear_audit_logs', 'all', 'success', 'Cleared audit logs database');
         return response()->json(['success' => true]);
     }

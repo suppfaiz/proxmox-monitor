@@ -182,11 +182,12 @@ class ProxmoxController extends Controller
 
     public function controlVm(Request $request, $node, $vmid, $action)
     {
+        $user = (object)$request->input('user');
         $config = $this->getConfig();
         $validActions = ['start', 'stop', 'shutdown', 'reboot'];
 
         if (!in_array($action, $validActions)) {
-            AuditLog::log($request->input('user')->username, "vm_{$action}", "{$node}/{$vmid}", 'failure', "Invalid VM action: {$action}");
+            AuditLog::log($user->username, "vm_{$action}", "{$node}/{$vmid}", 'failure', "Invalid VM action: {$action}");
             return response()->json(['error' => 'Invalid action. Must be start, stop, shutdown, or reboot'], 400);
         }
 
@@ -210,7 +211,7 @@ class ProxmoxController extends Controller
                 }
             }
             \Illuminate\Support\Facades\Cache::put('demo_vms', $vms, 600);
-            AuditLog::log($request->input('user')->username, "vm_{$action}", "{$node}/{$vmid}", 'success', "[DEMO] Triggered VM action successfully");
+            AuditLog::log($user->username, "vm_{$action}", "{$node}/{$vmid}", 'success', "[DEMO] Triggered VM action successfully");
             return response()->json(['success' => true, 'message' => "[DEMO] VM {$vmid} action '{$action}' triggered successfully."]);
         }
 
@@ -225,7 +226,7 @@ class ProxmoxController extends Controller
             }
 
             if (!$targetResource) {
-                AuditLog::log($request->input('user')->username, "vm_{$action}", "{$node}/{$vmid}", 'failure', 'VM not found');
+                AuditLog::log($user->username, "vm_{$action}", "{$node}/{$vmid}", 'failure', 'VM not found');
                 return response()->json(['error' => "VM/CT with ID {$vmid} not found on node {$node}"], 404);
             }
 
@@ -233,35 +234,36 @@ class ProxmoxController extends Controller
             $path = "nodes/{$node}/{$type}/{$vmid}/status/{$action}";
             $result = $this->proxmoxRequest('POST', $path);
 
-            AuditLog::log($request->input('user')->username, "vm_{$action}", "{$node}/{$vmid}", 'success', "Triggered VM action {$action}");
+            AuditLog::log($user->username, "vm_{$action}", "{$node}/{$vmid}", 'success', "Triggered VM action {$action}");
             return response()->json(['success' => true, 'details' => $result['data'] ?? $result]);
         } catch (\Exception $e) {
-            AuditLog::log($request->input('user')->username, "vm_{$action}", "{$node}/{$vmid}", 'failure', "Failed: " . $e->getMessage());
+            AuditLog::log($user->username, "vm_{$action}", "{$node}/{$vmid}", 'failure', "Failed: " . $e->getMessage());
             return response()->json(['error' => "Failed to trigger action '{$action}' on VM {$vmid}", 'details' => $e->getMessage()], 500);
         }
     }
 
     public function controlNode(Request $request, $node, $action)
     {
+        $user = (object)$request->input('user');
         $config = $this->getConfig();
         $validActions = ['reboot', 'shutdown'];
 
         if (!in_array($action, $validActions)) {
-            AuditLog::log($request->input('user')->username, "node_{$action}", $node, 'failure', "Invalid action: {$action}");
+            AuditLog::log($user->username, "node_{$action}", $node, 'failure', "Invalid action: {$action}");
             return response()->json(['error' => 'Invalid action. Must be reboot or shutdown'], 400);
         }
 
         if ($config['demoMode']) {
-            AuditLog::log($request->input('user')->username, "node_{$action}", $node, 'success', "[DEMO] Triggered host {$action} (Simulated)");
+            AuditLog::log($user->username, "node_{$action}", $node, 'success', "[DEMO] Triggered host {$action} (Simulated)");
             return response()->json(['success' => true, 'message' => "Node {$node} is performing {$action} (Simulated)"]);
         }
 
         try {
             $result = $this->proxmoxRequest('POST', "nodes/{$node}/status", ['command' => $action]);
-            AuditLog::log($request->input('user')->username, "node_{$action}", $node, 'success', "Sent host {$action} command");
+            AuditLog::log($user->username, "node_{$action}", $node, 'success', "Sent host {$action} command");
             return response()->json(['success' => true, 'message' => "Node {$node} {$action} command sent successfully.", 'details' => $result]);
         } catch (\Exception $e) {
-            AuditLog::log($request->input('user')->username, "node_{$action}", $node, 'failure', "Failed: " . $e->getMessage());
+            AuditLog::log($user->username, "node_{$action}", $node, 'failure', "Failed: " . $e->getMessage());
             return response()->json(['error' => "Failed to execute node command {$action}", 'details' => $e->getMessage()], 500);
         }
     }
@@ -318,7 +320,7 @@ class ProxmoxController extends Controller
                 File::put($envPath, $envContent);
             }
 
-            $currentUser = $request->input('user');
+            $currentUser = (object)$request->input('user');
             AuditLog::log($currentUser->username, 'edit_settings', 'system', 'success', 'Updated settings and wrote configurations to .env');
 
             return response()->json(['success' => true, 'message' => 'Settings saved successfully']);

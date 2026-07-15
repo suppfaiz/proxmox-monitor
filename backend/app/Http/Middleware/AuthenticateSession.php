@@ -25,7 +25,7 @@ class AuthenticateSession
 
         // Attach user info to request
         $request->merge([
-            'user' => (object)$session
+            'user' => (array)$session
         ]);
 
         return $next($request);

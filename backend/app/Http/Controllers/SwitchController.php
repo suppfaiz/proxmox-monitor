@@ -39,7 +39,7 @@ class SwitchController extends Controller
             'latency' => 1,
         ]);
 
-        $currentUser = $request->input('user');
+        $currentUser = (object)$request->input('user');
         AuditLog::log($currentUser->username, 'add_switch', $name, 'success', "Added switch {$name} ({$ip})");
 
         return response()->json($newSwitch);
@@ -53,7 +53,7 @@ class SwitchController extends Controller
         }
 
         $device->delete();
-        $currentUser = $request->input('user');
+        $currentUser = (object)$request->input('user');
         AuditLog::log($currentUser->username, 'delete_switch', $device->name, 'success', "Deleted switch {$device->name}");
 
         return response()->json(['success' => true, 'message' => 'Device deleted successfully']);
@@ -68,7 +68,7 @@ class SwitchController extends Controller
     public function slaClear(Request $request)
     {
         NetworkSla::truncate();
-        $currentUser = $request->input('user');
+        $currentUser = (object)$request->input('user');
         AuditLog::log($currentUser->username, 'clear_sla_logs', 'switches', 'success', 'Cleared switch SLA event logs');
         return response()->json(['success' => true]);
     }
