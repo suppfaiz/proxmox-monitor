@@ -85,7 +85,21 @@ class ProxmoxController extends Controller
 
         try {
             $res = $this->proxmoxRequest('GET', 'cluster/resources');
-            return response()->json($res['data'] ?? []);
+            $resources = $res['data'] ?? [];
+            
+            // Filter to only include qemu (VMs) and lxc (Containers)
+            $vms = array_values(array_filter($resources, function ($r) {
+                return isset($r['type']) && ($r['type'] === 'qemu' || $r['type'] === 'lxc');
+            }));
+
+            // Ensure name is always defined to prevent frontend crash
+            foreach ($vms as &$vm) {
+                if (!isset($vm['name']) || empty($vm['name'])) {
+                    $vm['name'] = isset($vm['vmid']) ? 'VM ' . $vm['vmid'] : 'Unnamed';
+                }
+            }
+
+            return response()->json($vms);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Failed to fetch Proxmox resources', 'details' => $e->getMessage()], 500);
         }
@@ -342,6 +356,10 @@ class ProxmoxController extends Controller
                     'used' => 52.4 * 1024 * 1024 * 1024,
                     'total' => 80 * 1024 * 1024 * 1024
                 ],
+                'disk' => [
+                    'used' => 120 * 1024 * 1024 * 1024,
+                    'total' => 500 * 1024 * 1024 * 1024
+                ],
                 'pveVersion' => 'Proxmox VE 8.1.4',
                 'kversion' => 'Linux 6.5.11-7-pve',
                 'cpuinfo' => [
@@ -353,7 +371,12 @@ class ProxmoxController extends Controller
                     (string)(0.2 + rand(0, 40)/100),
                     (string)(0.2 + rand(0, 30)/100)
                 ],
-                'wait' => 0.01
+                'wait' => 0.01,
+                'iowait' => 1.0,
+                'mikrotikNetwork' => [
+                    'online' => true,
+                    'cpu' => rand(5, 12)
+                ]
             ]);
         }
 
@@ -371,6 +394,24 @@ class ProxmoxController extends Controller
             $versionRes = $this->proxmoxRequest('GET', 'version');
             $version = $versionRes['data']['version'] ?? '8.x';
 
+            // Retrieve Mikrotik connection stats from Cache
+            $mikrotikStats = \Illuminate\Support\Facades\Cache::get('mikrotik_stats');
+            $mikrotikNetwork = [
+                'online' => false
+            ];
+            if ($mikrotikStats && isset($mikrotikStats['online']) && $mikrotikStats['online']) {
+                $mikrotikNetwork = [
+                    'online' => true,
+                    'cpu' => $mikrotikStats['cpu'] ?? 0
+                ];
+            } else {
+                $mikrotikOnline = \Illuminate\Support\Facades\Cache::get('mikrotik_online', false);
+                $mikrotikNetwork = [
+                    'online' => $mikrotikOnline,
+                    'cpu' => 0
+                ];
+            }
+
             return response()->json([
                 'node' => $targetNode,
                 'status' => 'online',
@@ -379,6 +420,10 @@ class ProxmoxController extends Controller
                     'used' => $status['memory']['used'] ?? 0,
                     'total' => $status['memory']['total'] ?? 0
                 ],
+                'disk' => [
+                    'used' => $status['rootfs']['used'] ?? 0,
+                    'total' => $status['rootfs']['total'] ?? 0
+                ],
                 'pveVersion' => "Proxmox VE {$version}",
                 'kversion' => $status['kversion'] ?? 'Linux Kernel',
                 'cpuinfo' => [
@@ -386,7 +431,9 @@ class ProxmoxController extends Controller
                     'cpus' => $status['cpuinfo']['cpus'] ?? 1
                 ],
                 'loadavg' => $status['loadavg'] ?? [0, 0, 0],
-                'wait' => $status['wait'] ?? 0
+                'wait' => $status['wait'] ?? 0,
+                'iowait' => isset($status['wait']) ? round($status['wait'] * 100, 2) : 0,
+                'mikrotikNetwork' => $mikrotikNetwork
             ]);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Failed to fetch Proxmox Node Status', 'details' => $e->getMessage()], 500);

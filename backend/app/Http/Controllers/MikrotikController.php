@@ -25,15 +25,18 @@ class MikrotikController extends Controller
             $stats = $this->getDemoStats();
             // Store online state in cache for Proxmox status check
             Cache::put('mikrotik_online', true, 60);
+            Cache::put('mikrotik_stats', $stats, 60);
             return response()->json($stats);
         }
 
         try {
             $stats = $this->pollRealMikrotikSNMP($config);
             Cache::put('mikrotik_online', $stats['online'], 60);
+            Cache::put('mikrotik_stats', $stats, 60);
             return response()->json($stats);
         } catch (\Exception $e) {
             Cache::put('mikrotik_online', false, 60);
+            Cache::forget('mikrotik_stats');
             return response()->json([
                 'online' => false,
                 'error' => 'Failed to query MikroTik SNMP',
