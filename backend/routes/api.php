@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Route;
 
 // Public login route (corresponds to /api/login)
 Route::post('/login', [AuthController::class, 'login']);
+Route::get('/diagnose', [ProxmoxController.class, 'diagnose']);
 
 // Authenticated SPA routes
 Route::middleware('auth.session')->group(function () {

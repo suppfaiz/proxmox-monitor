@@ -545,4 +545,64 @@ class ProxmoxController extends Controller
             ['upid' => 'UPID:node-02:005:006:start:lxc/200', 'node' => 'jnoc-node-02', 'user' => 'root@pam', 'starttime' => time() - 10000, 'endtime' => time() - 9980, 'status' => 'OK', 'type' => 'lxcstart']
         ];
     }
+
+    public function diagnose()
+    {
+        $config = $this->getConfig();
+        $diagnostics = [
+            'config' => [
+                'demoMode' => $config['demoMode'],
+                'apiUrl' => $config['apiUrl'],
+                'tokenId' => $config['tokenId'],
+                'tokenSecret_length' => strlen($config['tokenSecret']),
+                'tokenSecret_masked' => substr($config['tokenSecret'], 0, 4) . '...' . substr($config['tokenSecret'], -4),
+                'mikrotikIp' => $config['mikrotikIp'],
+                'mikrotikCommunity' => $config['mikrotikCommunity'],
+                'mikrotikPort' => $config['mikrotikPort'],
+            ],
+            'proxmox_connection_test' => [],
+            'laravel_logs' => []
+        ];
+
+        // 1. Test Proxmox Connection
+        try {
+            $url = rtrim($config['apiUrl'], '/') . '/version';
+            $headers = [
+                'Authorization' => "PVEAPIToken={$config['tokenId']}={$config['tokenSecret']}",
+                'Accept' => 'application/json',
+            ];
+            
+            $startTime = microtime(true);
+            $response = \Illuminate\Support\Facades\Http::withoutVerifying()->withHeaders($headers)->timeout(5)->get($url);
+            $endTime = microtime(true);
+            
+            $diagnostics['proxmox_connection_test'] = [
+                'success' => $response->successful(),
+                'status_code' => $response->status(),
+                'response_time_ms' => round(($endTime - $startTime) * 1000, 2),
+                'body' => $response->json() ?? $response->body(),
+            ];
+        } catch (\Exception $e) {
+            $diagnostics['proxmox_connection_test'] = [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ];
+        }
+
+        // 2. Read Laravel logs
+        try {
+            $logPath = storage_path('logs/laravel.log');
+            if (\Illuminate\Support\Facades\File::exists($logPath)) {
+                $lines = file($logPath);
+                $diagnostics['laravel_logs'] = array_slice($lines, -30);
+            } else {
+                $diagnostics['laravel_logs'] = ['Log file does not exist at: ' . $logPath];
+            }
+        } catch (\Exception $e) {
+            $diagnostics['laravel_logs'] = ['Failed to read logs: ' . $e->getMessage()];
+        }
+
+        return response()->json($diagnostics);
+    }
 }
