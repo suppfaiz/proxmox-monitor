@@ -10,7 +10,7 @@ class MikrotikController extends Controller
     private function getConfig()
     {
         return [
-            'demoMode' => env('DEMO_MODE', 'true') !== 'false',
+            'demoMode' => filter_var(env('DEMO_MODE', true), FILTER_VALIDATE_BOOLEAN),
             'mikrotikIp' => env('MIKROTIK_IP', '192.168.88.1'),
             'mikrotikCommunity' => env('MIKROTIK_SNMP_COMMUNITY', 'public'),
             'mikrotikPort' => (int)env('MIKROTIK_SNMP_PORT', 161),

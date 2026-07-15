@@ -12,7 +12,7 @@ class ProxmoxController extends Controller
     private function getConfig()
     {
         return [
-            'demoMode' => env('DEMO_MODE', 'true') !== 'false',
+            'demoMode' => filter_var(env('DEMO_MODE', true), FILTER_VALIDATE_BOOLEAN),
             'apiUrl' => env('PROXMOX_API_URL', 'https://YOUR_PROXMOX_IP:8006/api2/json'),
             'tokenId' => env('PROXMOX_TOKEN_ID', 'root@pam!dashboard'),
             'tokenSecret' => env('PROXMOX_TOKEN_SECRET', ''),

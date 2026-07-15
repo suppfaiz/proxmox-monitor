@@ -37,7 +37,7 @@ class PingSwitches extends Command
 
     private function pollSwitches()
     {
-        $demoMode = env('DEMO_MODE', 'true') !== 'false';
+        $demoMode = filter_var(env('DEMO_MODE', true), FILTER_VALIDATE_BOOLEAN);
         $switches = SwitchModel::all();
 
         foreach ($switches as $sw) {
